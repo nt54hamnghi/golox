@@ -1,5 +1,7 @@
 package main
 
+import "strconv"
+
 type Scanner struct {
 	// Raw source code
 	source []rune
@@ -101,10 +103,18 @@ func (s *Scanner) scanToken() {
 		s.line++
 		return
 	case '"':
-		s.stringLiteral()
+		s.string()
 	default:
-		err(s.line, "Unexpected characters.")
+		if isDigit(char) {
+			s.number()
+		} else {
+			err(s.line, "Unexpected characters.")
+		}
 	}
+}
+
+func isDigit(char rune) bool {
+	return '0' <= char && char <= '9'
 }
 
 func (s *Scanner) advanced() rune {
@@ -134,7 +144,7 @@ func (s *Scanner) peek() rune {
 	return s.source[s.current]
 }
 
-func (s *Scanner) stringLiteral() {
+func (s *Scanner) string() {
 	for s.peek() != '"' && !s.isAtEnd() {
 		// support for multi-line string, updating line
 		// counter when encountering a newline
@@ -155,6 +165,34 @@ func (s *Scanner) stringLiteral() {
 	// trim the surrounding quotes
 	value := s.source[s.start+1 : s.current-1]
 	s.addToken(STRING, string(value))
+}
+
+func (s *Scanner) number() {
+	for isDigit(s.peek()) {
+		s.advanced()
+	}
+
+	if s.peek() == '.' && isDigit(s.peekNext()) {
+		// consume the .
+		s.advanced()
+		for isDigit(s.peek()) {
+			s.advanced()
+		}
+	}
+
+	value := s.source[s.start:s.current]
+	number, err := strconv.ParseFloat(string(value), 64)
+	if err != nil {
+		panic("lexeme is not a number")
+	}
+	s.addToken(NUMBER, number)
+}
+
+func (s *Scanner) peekNext() rune {
+	if s.current+1 >= len(s.source) {
+		return 0
+	}
+	return s.source[s.current+1]
 }
 
 func (s *Scanner) addToken(typ TokenType, literal any) {
