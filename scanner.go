@@ -100,6 +100,8 @@ func (s *Scanner) scanToken() {
 	case '\n':
 		s.line++
 		return
+	case '"':
+		s.stringLiteral()
 	default:
 		err(s.line, "Unexpected characters.")
 	}
@@ -130,6 +132,29 @@ func (s *Scanner) peek() rune {
 		return 0 // null character
 	}
 	return s.source[s.current]
+}
+
+func (s *Scanner) stringLiteral() {
+	for s.peek() != '"' && !s.isAtEnd() {
+		// support for multi-line string, updating line
+		// counter when encountering a newline
+		if s.peek() == '\n' {
+			s.line += 1
+		}
+		s.advanced()
+	}
+
+	if s.isAtEnd() {
+		err(s.line, "Unterminated string")
+		return
+	}
+
+	// consume the closing "
+	s.advanced()
+
+	// trim the surrounding quotes
+	value := s.source[s.start+1 : s.current-1]
+	s.addToken(STRING, string(value))
 }
 
 func (s *Scanner) addToken(typ TokenType, literal any) {
