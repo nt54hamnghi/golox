@@ -1,0 +1,76 @@
+package main
+
+type Scanner struct {
+	// Raw source code
+	source []rune
+	// Slice of tokens to be filled as we scan the source code
+	tokens []Token
+	// Offset into the source code, pointing at the first character of the lexeme being scanned
+	start int
+	// Offset into the source code, pointing at the character being considered for the current lexeme
+	current int
+	// Line where the lexeme is located.
+	line int
+}
+
+func NewScanner(src string) Scanner {
+	return Scanner{
+		source:  []rune(src),
+		tokens:  []Token{},
+		start:   0,
+		current: 0,
+		line:    1,
+	}
+}
+
+func (s *Scanner) scanTokens() []Token {
+	for !s.isAtEnd() {
+		s.start = s.current
+		s.scanToken()
+	}
+	s.tokens = append(s.tokens, NewToken(EOF, "", nil, s.line))
+	return s.tokens
+}
+
+func (s *Scanner) scanToken() {
+	switch char := s.advanced(); char {
+	case '(':
+		s.addToken(LEFT_PAREN, nil)
+	case ')':
+		s.addToken(RIGHT_PAREN, nil)
+	case '{':
+		s.addToken(LEFT_BRACE, nil)
+	case '}':
+		s.addToken(RIGHT_BRACE, nil)
+	case ',':
+		s.addToken(COMMA, nil)
+	case '.':
+		s.addToken(DOT, nil)
+	case '-':
+		s.addToken(MINUS, nil)
+	case '+':
+		s.addToken(PLUS, nil)
+	case ';':
+		s.addToken(SEMICOLON, nil)
+	case '*':
+		s.addToken(STAR, nil)
+	default:
+		err(s.line, "Unexpected characters.")
+	}
+}
+
+func (s *Scanner) advanced() rune {
+	char := s.source[s.current]
+	s.current++
+	return char
+}
+
+func (s *Scanner) addToken(typ TokenType, literal any) {
+	text := string(s.source[s.start:s.current])
+	token := NewToken(typ, text, literal, s.line)
+	s.tokens = append(s.tokens, token)
+}
+
+func (s Scanner) isAtEnd() bool {
+	return s.current >= len(s.source)
+}

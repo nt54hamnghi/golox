@@ -1,0 +1,16 @@
+[
+  {
+    "adapter": "Delve",
+    "label": "Run File",
+    "request": "launch",
+    "mode": "debug",
+    "program": ".",
+    "cwd": "$ZED_DIRNAME",
+    "args": ["test.lox"],
+    "buildFlags": [],
+    "env": {},
+  },
+] // Project-local debug tasks
+//
+// For more documentation on how to configure debug tasks,
+// see: https://zed.dev/docs/debugger
