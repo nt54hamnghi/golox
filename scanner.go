@@ -54,6 +54,38 @@ func (s *Scanner) scanToken() {
 		s.addToken(SEMICOLON, nil)
 	case '*':
 		s.addToken(STAR, nil)
+	case '!':
+		var typ TokenType
+		if s.match('=') {
+			typ = BANG_EQUAL
+		} else {
+			typ = BANG
+		}
+		s.addToken(typ, nil)
+	case '=':
+		var typ TokenType
+		if s.match('=') {
+			typ = EQUAL_EQUAL
+		} else {
+			typ = EQUAL
+		}
+		s.addToken(typ, nil)
+	case '<':
+		var typ TokenType
+		if s.match('=') {
+			typ = LESS_EQUAL
+		} else {
+			typ = LESS
+		}
+		s.addToken(typ, nil)
+	case '>':
+		var typ TokenType
+		if s.match('=') {
+			typ = GREATER_EQUAL
+		} else {
+			typ = GREATER
+		}
+		s.addToken(typ, nil)
 	default:
 		err(s.line, "Unexpected characters.")
 	}
@@ -63,6 +95,20 @@ func (s *Scanner) advanced() rune {
 	char := s.source[s.current]
 	s.current++
 	return char
+}
+
+func (s *Scanner) match(expected rune) bool {
+	if s.isAtEnd() {
+		return false
+	}
+
+	char := s.source[s.current]
+	if char != expected {
+		return false
+	}
+
+	s.current++
+	return true
 }
 
 func (s *Scanner) addToken(typ TokenType, literal any) {
