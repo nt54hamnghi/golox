@@ -2,6 +2,25 @@ package main
 
 import "strconv"
 
+var keyword map[string]TokenType = map[string]TokenType{
+	"and":    AND,
+	"class":  CLASS,
+	"else":   ELSE,
+	"false":  FALSE,
+	"for":    FOR,
+	"fun":    FUN,
+	"if":     IF,
+	"nil":    NIL,
+	"or":     OR,
+	"print":  PRINT,
+	"return": RETURN,
+	"super":  SUPER,
+	"this":   THIS,
+	"true":   TRUE,
+	"var":    VAR,
+	"while":  WHILE,
+}
+
 type Scanner struct {
 	// Raw source code
 	source []rune
@@ -107,6 +126,8 @@ func (s *Scanner) scanToken() {
 	default:
 		if isDigit(char) {
 			s.number()
+		} else if isAlpha(char) {
+			s.identifier()
 		} else {
 			err(s.line, "Unexpected characters.")
 		}
@@ -115,6 +136,14 @@ func (s *Scanner) scanToken() {
 
 func isDigit(char rune) bool {
 	return '0' <= char && char <= '9'
+}
+
+func isAlpha(char rune) bool {
+	return ('a' <= char && char <= 'z') || ('A' <= char && char <= 'Z') || char == '_'
+}
+
+func isAlphaNumeric(char rune) bool {
+	return isAlpha(char) || isDigit(char)
 }
 
 func (s *Scanner) advanced() rune {
@@ -186,6 +215,19 @@ func (s *Scanner) number() {
 		panic("lexeme is not a number")
 	}
 	s.addToken(NUMBER, number)
+}
+
+func (s *Scanner) identifier() {
+	for isAlphaNumeric(s.peek()) {
+		s.advanced()
+	}
+
+	value := string(s.source[s.start:s.current])
+	if typ, ok := keyword[value]; ok {
+		s.addToken(typ, nil)
+	} else {
+		s.addToken(IDENTIFIER, nil)
+	}
 }
 
 func (s *Scanner) peekNext() rune {
