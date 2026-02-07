@@ -129,7 +129,7 @@ func (s *Scanner) scanToken() {
 		} else if isAlpha(char) {
 			s.identifier()
 		} else {
-			err(s.line, "Unexpected characters.")
+			errorAtLine(s.line, "Unexpected characters.")
 		}
 	}
 }
@@ -184,7 +184,7 @@ func (s *Scanner) string() {
 	}
 
 	if s.isAtEnd() {
-		err(s.line, "Unterminated string")
+		errorAtLine(s.line, "Unterminated string")
 		return
 	}
 

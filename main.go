@@ -74,13 +74,29 @@ func run(src string) {
 	scanner := NewScanner(src)
 	tokens := scanner.scanTokens()
 
-	for _, token := range tokens {
-		fmt.Println(token)
+	parser := NewParser[string](tokens)
+	expr := parser.Parse()
+
+	if hadError {
+		return
 	}
+
+	var printer AstPrinter
+	repr := printer.String(expr)
+	fmt.Println(repr)
 }
 
-func err(line int, message string) {
+func errorAtLine(line int, message string) {
 	report(line, "", message)
+}
+
+func errorAtToken(token Token, message string) {
+	if token.Type == EOF {
+		report(token.Line, " at end", message)
+	} else {
+		at := fmt.Sprintf(" at '%s'", token.Lexeme)
+		report(token.Line, at, message)
+	}
 }
 
 func report(line int, where string, message string) {
