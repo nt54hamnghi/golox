@@ -5,7 +5,7 @@
     "request": "launch",
     "mode": "debug",
     "program": ".",
-    "cwd": "$ZED_DIRNAME",
+    "cwd": "/home/hamnghi/sandbox/golox",
     "args": ["test.lox"],
     "buildFlags": [],
     "env": {},

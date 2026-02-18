@@ -23,7 +23,12 @@ Direct Go commands also work:
 - Filenames mirror their responsibility (`scanner.go`, `token.go`).
 
 ## Testing Guidelines
-There are currently no automated tests in the repository. If you add tests, prefer Go’s standard testing package with files named `*_test.go`, and document how to run them in this file (e.g., `go test ./...`).
+- Tests live alongside code in `*_test.go` files.
+- Use `go test ./cmd/... ./pkg/...` (see `just test`).
+- Use table-driven tests and clear case names.
+- Use `testify` for assertions in parameterized tests.
+- Use `testify/suite` for setup & teardown behaviors.
+- Cover edge cases and error paths; test plan should be explicit for complex features.
 
 ## Commit & Pull Request Guidelines
 Git history uses Conventional Commits with scopes, for example:
