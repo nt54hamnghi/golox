@@ -20,6 +20,15 @@ func NewToken(kind TokenType, lexeme string, literal any, line int) Token {
 	}
 }
 
+func NewEOFToken(line int) Token {
+	return Token{
+		EOF,
+		"",
+		nil,
+		line,
+	}
+}
+
 func (t Token) String() string {
 	literal := "null"
 	if t.Literal != nil {

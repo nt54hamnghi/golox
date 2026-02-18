@@ -24,11 +24,54 @@ Direct Go commands also work:
 
 ## Testing Guidelines
 - Tests live alongside code in `*_test.go` files.
-- Use `go test ./cmd/... ./pkg/...` (see `just test`).
 - Use table-driven tests and clear case names.
 - Use `testify` for assertions in parameterized tests.
 - Use `testify/suite` for setup & teardown behaviors.
 - Cover edge cases and error paths; test plan should be explicit for complex features.
+
+Example test:
+
+```go
+func TestNewWidget(t *testing.T) {
+	testCases := []struct {
+		name  string
+		label string
+		value int
+		tag   string
+		want  Widget
+	}{
+		{
+			name:  "default tag if empty",
+			label: "primary",
+			value: 42,
+			tag:   "",
+			want: Widget{
+				Label: "primary",
+				Value: 42,
+				Tag:   "default",
+			},
+		},
+		{
+			name:  "use provided tag",
+			label: "secondary",
+			value: 7,
+			tag:   "custom-tag",
+			want: Widget{
+				Label: "secondary",
+				Value: 7,
+				Tag:   "custom-tag",
+			},
+		},
+	}
+	r := require.New(t)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(*testing.T) {
+			got := NewWidget(tt.label, tt.value, tt.tag)
+			r.Equal(tt.want, got)
+		})
+	}
+}
+```
 
 ## Commit & Pull Request Guidelines
 Git history uses Conventional Commits with scopes, for example:

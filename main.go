@@ -41,10 +41,9 @@ func runFile(path string) error {
 		return err
 	}
 
-	run(string(bytes))
-
-	if hadError {
-		os.Exit(65)
+	err = run(string(bytes))
+	if err != nil {
+		exit(err)
 	}
 
 	return nil
@@ -60,8 +59,9 @@ func runPrompt() error {
 			break
 		}
 		line := scanner.Text()
-		run(line)
-		hadError = false
+		if err := run(line); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -70,36 +70,27 @@ func runPrompt() error {
 	return nil
 }
 
-func run(src string) {
+func run(src string) error {
 	scanner := NewScanner(src)
-	tokens := scanner.scanTokens()
+	tokens, err := scanner.ScanTokens()
+	if err != nil {
+		return err
+	}
 
 	parser := NewParser[string](tokens)
-	expr := parser.Parse()
-
-	if hadError {
-		return
+	expr, err := parser.Parse()
+	if err != nil {
+		return err
 	}
 
 	var printer AstPrinter
 	repr := printer.String(expr)
 	fmt.Println(repr)
+
+	return nil
 }
 
-func errorAtLine(line int, message string) {
-	report(line, "", message)
-}
-
-func errorAtToken(token Token, message string) {
-	if token.Type == EOF {
-		report(token.Line, " at end", message)
-	} else {
-		at := fmt.Sprintf(" at '%s'", token.Lexeme)
-		report(token.Line, at, message)
-	}
-}
-
-func report(line int, where string, message string) {
-	fmt.Fprintf(os.Stderr, "[line %d ] Error%s: %s\n", line, where, message)
-	hadError = true
+func exit(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(65)
 }

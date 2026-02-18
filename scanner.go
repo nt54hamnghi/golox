@@ -1,6 +1,10 @@
 package main
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 var keyword map[string]TokenType = map[string]TokenType{
 	"and":    AND,
@@ -44,16 +48,26 @@ func NewScanner(src string) Scanner {
 	}
 }
 
-func (s *Scanner) scanTokens() []Token {
+func (s *Scanner) ScanTokens() ([]Token, error) {
+	sErr := ScannerError{}
+
 	for !s.isAtEnd() {
 		s.start = s.current
-		s.scanToken()
+		if err := s.scanToken(); err != nil {
+			sErr = append(sErr, err)
+		}
 	}
-	s.tokens = append(s.tokens, NewToken(EOF, "", nil, s.line))
-	return s.tokens
+
+	s.tokens = append(s.tokens, NewEOFToken(s.line))
+
+	if sErr.empty() {
+		return s.tokens, nil
+	}
+
+	return s.tokens, sErr
 }
 
-func (s *Scanner) scanToken() {
+func (s *Scanner) scanToken() error {
 	switch char := s.advanced(); char {
 	case '(':
 		s.addToken(LEFT_PAREN, nil)
@@ -117,21 +131,23 @@ func (s *Scanner) scanToken() {
 		}
 	case ' ', '\r', '\t':
 		// ignore whitespace
-		return
+		return nil
 	case '\n':
 		s.line++
-		return
+		return nil
 	case '"':
-		s.string()
+		return s.string()
 	default:
 		if isDigit(char) {
 			s.number()
 		} else if isAlpha(char) {
 			s.identifier()
 		} else {
-			errorAtLine(s.line, "Unexpected characters.")
+			return ErrorAtLine(s.line, "Unexpected character: "+string(char))
 		}
 	}
+
+	return nil
 }
 
 func isDigit(char rune) bool {
@@ -173,7 +189,7 @@ func (s *Scanner) peek() rune {
 	return s.source[s.current]
 }
 
-func (s *Scanner) string() {
+func (s *Scanner) string() error {
 	for s.peek() != '"' && !s.isAtEnd() {
 		// support for multi-line string, updating line
 		// counter when encountering a newline
@@ -184,8 +200,7 @@ func (s *Scanner) string() {
 	}
 
 	if s.isAtEnd() {
-		errorAtLine(s.line, "Unterminated string")
-		return
+		return ErrorAtLine(s.line, "Unterminated string.")
 	}
 
 	// consume the closing "
@@ -194,6 +209,8 @@ func (s *Scanner) string() {
 	// trim the surrounding quotes
 	value := s.source[s.start+1 : s.current-1]
 	s.addToken(STRING, string(value))
+
+	return nil
 }
 
 func (s *Scanner) number() {
@@ -245,4 +262,30 @@ func (s *Scanner) addToken(typ TokenType, literal any) {
 
 func (s Scanner) isAtEnd() bool {
 	return s.current >= len(s.source)
+}
+
+// ScannerError is a collection of errors that occurred during scanning.
+type ScannerError []error
+
+// Error implements the error interface, returning a string representation
+// of all errors in the collection.
+func (se ScannerError) Error() string {
+	var b strings.Builder
+
+	for _, err := range se {
+		if err != nil {
+			fmt.Fprintln(&b, err.Error())
+		}
+	}
+
+	return strings.TrimSpace(b.String())
+}
+
+// empty returns true if all errors are nil
+func (se ScannerError) empty() bool {
+	empty := true
+	for _, err := range se {
+		empty = empty && (err == nil)
+	}
+	return empty
 }
