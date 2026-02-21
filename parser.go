@@ -212,7 +212,7 @@ func (p Parser[T]) synchronize() {
 		case CLASS, FUN, VAR, FOR, IF, WHILE, PRINT, RETURN:
 			return
 		}
-	}
 
-	p.advance()
+		p.advance()
+	}
 }

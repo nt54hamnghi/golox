@@ -2,10 +2,13 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 )
+
+var interpreter Interpreter
 
 func main() {
 	args := os.Args
@@ -77,20 +80,31 @@ func run(src string) error {
 		return err
 	}
 
-	parser := NewParser[string](tokens)
+	parser := NewParser[Object](tokens)
 	expr, err := parser.Parse()
 	if err != nil {
 		return err
 	}
 
-	var printer AstPrinter
-	repr := printer.String(expr)
-	fmt.Println(repr)
+	err = interpreter.Interpret(expr)
+	if err != nil {
+		return err
+	}
+
+	// var printer AstPrinter
+	// repr := printer.String(expr)
+	// fmt.Println(repr)
 
 	return nil
 }
 
 func exit(err error) {
 	fmt.Fprintln(os.Stderr, err)
+
+	var runtimeErr RuntimeError
+	if errors.As(err, &runtimeErr) {
+		os.Exit(70)
+	}
+
 	os.Exit(65)
 }
