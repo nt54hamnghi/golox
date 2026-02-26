@@ -80,7 +80,7 @@ func run(src string) error {
 		return err
 	}
 
-	parser := NewParser[Object](tokens)
+	parser := NewParser(tokens)
 	expr, err := parser.Parse()
 	if err != nil {
 		return err

@@ -8,7 +8,7 @@ type Object any
 
 type Interpreter struct{}
 
-func (i Interpreter) Interpret(expr Expr[Object]) error {
+func (i Interpreter) Interpret(expr Expr) error {
 	value, err := i.evaluate(expr)
 	if err != nil {
 		return err
@@ -18,19 +18,19 @@ func (i Interpreter) Interpret(expr Expr[Object]) error {
 	return nil
 }
 
-func (i Interpreter) evaluate(expr Expr[Object]) (Object, error) {
+func (i Interpreter) evaluate(expr Expr) (any, error) {
 	return expr.Accept(i)
 }
 
-func (i Interpreter) VisitLiteralExpr(expr Literal[Object]) (Object, error) {
+func (i Interpreter) VisitLiteralExpr(expr Literal) (any, error) {
 	return expr.Value, nil
 }
 
-func (i Interpreter) VisitGroupingExpr(expr Grouping[Object]) (Object, error) {
+func (i Interpreter) VisitGroupingExpr(expr Grouping) (any, error) {
 	return i.evaluate(expr.Expression)
 }
 
-func (i Interpreter) VisitUnaryExpr(expr Unary[Object]) (Object, error) {
+func (i Interpreter) VisitUnaryExpr(expr Unary) (any, error) {
 	right, err := i.evaluate(expr.Right)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (i Interpreter) VisitUnaryExpr(expr Unary[Object]) (Object, error) {
 	panic("unreachable")
 }
 
-func (i Interpreter) VisitBinaryExpr(expr Binary[Object]) (Object, error) {
+func (i Interpreter) VisitBinaryExpr(expr Binary) (any, error) {
 	left, err := i.evaluate(expr.Left)
 	if err != nil {
 		return nil, err

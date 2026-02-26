@@ -1,39 +1,39 @@
 package main
 
-type Stmt[T any] interface {
-	Accept(visitor StmtVisitor[T]) (T, error)
+type Stmt interface {
+	Accept(visitor StmtVisitor) (any, error)
 }
 
-type StmtVisitor[T any] interface {
-	VisitExpressionStmt(expr Expression[T]) (T, error)
-	VisitPrintStmt(expr Print[T]) (T, error)
+type StmtVisitor interface {
+	VisitExpressionStmt(expr Expression) (any, error)
+	VisitPrintStmt(expr Print) (any, error)
 }
 
-type Expression[T any] struct {
-	Expression Expr[T]
+type Expression struct {
+	Expression Expr
 }
 
-func NewExpression[T any](expression Expr[T]) Expression[T] {
-	return Expression[T]{
+func NewExpression(expression Expr) Expression {
+	return Expression{
 		Expression: expression,
 	}
 }
 
-func (self Expression[T]) Accept(visitor StmtVisitor[T]) (T, error) {
+func (self Expression) Accept(visitor StmtVisitor) (any, error) {
 	return visitor.VisitExpressionStmt(self)
 }
 
-type Print[T any] struct {
-	Expression Expr[T]
+type Print struct {
+	Expression Expr
 }
 
-func NewPrint[T any](expression Expr[T]) Print[T] {
-	return Print[T]{
+func NewPrint(expression Expr) Print {
+	return Print{
 		Expression: expression,
 	}
 }
 
-func (self Print[T]) Accept(visitor StmtVisitor[T]) (T, error) {
+func (self Print) Accept(visitor StmtVisitor) (any, error) {
 	return visitor.VisitPrintStmt(self)
 }
 

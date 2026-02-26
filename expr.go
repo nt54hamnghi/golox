@@ -1,75 +1,75 @@
 package main
 
-type Expr[T any] interface {
-	Accept(visitor ExprVisitor[T]) (T, error)
+type Expr interface {
+	Accept(visitor ExprVisitor) (any, error)
 }
 
-type ExprVisitor[T any] interface {
-	VisitLiteralExpr(expr Literal[T]) (T, error)
-	VisitGroupingExpr(expr Grouping[T]) (T, error)
-	VisitUnaryExpr(expr Unary[T]) (T, error)
-	VisitBinaryExpr(expr Binary[T]) (T, error)
+type ExprVisitor interface {
+	VisitLiteralExpr(expr Literal) (any, error)
+	VisitGroupingExpr(expr Grouping) (any, error)
+	VisitUnaryExpr(expr Unary) (any, error)
+	VisitBinaryExpr(expr Binary) (any, error)
 }
 
-type Literal[T any] struct {
+type Literal struct {
 	Value any
 }
 
-func NewLiteral[T any](value any) Literal[T] {
-	return Literal[T]{
+func NewLiteral(value any) Literal {
+	return Literal{
 		Value: value,
 	}
 }
 
-func (self Literal[T]) Accept(visitor ExprVisitor[T]) (T, error) {
+func (self Literal) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitLiteralExpr(self)
 }
 
-type Grouping[T any] struct {
-	Expression Expr[T]
+type Grouping struct {
+	Expression Expr
 }
 
-func NewGrouping[T any](expression Expr[T]) Grouping[T] {
-	return Grouping[T]{
+func NewGrouping(expression Expr) Grouping {
+	return Grouping{
 		Expression: expression,
 	}
 }
 
-func (self Grouping[T]) Accept(visitor ExprVisitor[T]) (T, error) {
+func (self Grouping) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitGroupingExpr(self)
 }
 
-type Unary[T any] struct {
+type Unary struct {
 	Operator Token
-	Right Expr[T]
+	Right Expr
 }
 
-func NewUnary[T any](operator Token, right Expr[T]) Unary[T] {
-	return Unary[T]{
+func NewUnary(operator Token, right Expr) Unary {
+	return Unary{
 		Operator: operator,
 		Right: right,
 	}
 }
 
-func (self Unary[T]) Accept(visitor ExprVisitor[T]) (T, error) {
+func (self Unary) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitUnaryExpr(self)
 }
 
-type Binary[T any] struct {
-	Left Expr[T]
+type Binary struct {
+	Left Expr
 	Operator Token
-	Right Expr[T]
+	Right Expr
 }
 
-func NewBinary[T any](left Expr[T], operator Token, right Expr[T]) Binary[T] {
-	return Binary[T]{
+func NewBinary(left Expr, operator Token, right Expr) Binary {
+	return Binary{
 		Left: left,
 		Operator: operator,
 		Right: right,
 	}
 }
 
-func (self Binary[T]) Accept(visitor ExprVisitor[T]) (T, error) {
+func (self Binary) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitBinaryExpr(self)
 }
 

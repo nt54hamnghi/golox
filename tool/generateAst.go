@@ -19,14 +19,14 @@ func main() {
 
 	defineAst(outputDir, "Expr", []typeDesc{
 		{"Literal", []field{{"Value", "any"}}},
-		{"Grouping", []field{{"Expression", "Expr[T]"}}},
-		{"Unary", []field{{"Operator", "Token"}, {"Right", "Expr[T]"}}},
-		{"Binary", []field{{"Left", "Expr[T]"}, {"Operator", "Token"}, {"Right", "Expr[T]"}}},
+		{"Grouping", []field{{"Expression", "Expr"}}},
+		{"Unary", []field{{"Operator", "Token"}, {"Right", "Expr"}}},
+		{"Binary", []field{{"Left", "Expr"}, {"Operator", "Token"}, {"Right", "Expr"}}},
 	})
 
 	defineAst(outputDir, "Stmt", []typeDesc{
-		{"Expression", []field{{"Expression", "Expr[T]"}}},
-		{"Print", []field{{"Expression", "Expr[T]"}}},
+		{"Expression", []field{{"Expression", "Expr"}}},
+		{"Print", []field{{"Expression", "Expr"}}},
 	})
 }
 
@@ -55,8 +55,8 @@ func defineAst(outputDir string, base string, types []typeDesc) error {
 
 	fmt.Fprintln(&b, "package main")
 	fmt.Fprintln(&b)
-	fmt.Fprintf(&b, "type %s[T any] interface {\n", base)
-	fmt.Fprintf(&b, "\tAccept(visitor %sVisitor[T]) (T, error)\n", base)
+	fmt.Fprintf(&b, "type %s interface {\n", base)
+	fmt.Fprintf(&b, "\tAccept(visitor %sVisitor) (any, error)\n", base)
 	fmt.Fprintln(&b, "}")
 	fmt.Fprintln(&b)
 
@@ -75,10 +75,10 @@ func defineAst(outputDir string, base string, types []typeDesc) error {
 }
 
 func defineVisitor(b *strings.Builder, base string, types []typeDesc) {
-	fmt.Fprintf(b, "type %sVisitor[T any] interface {\n", base)
+	fmt.Fprintf(b, "type %sVisitor interface {\n", base)
 
 	for _, t := range types {
-		fmt.Fprintf(b, "\tVisit%s%s(expr %s[T]) (T, error)", t.name, base, t.name)
+		fmt.Fprintf(b, "\tVisit%s%s(expr %s) (any, error)", t.name, base, t.name)
 		fmt.Fprintln(b)
 	}
 
@@ -87,7 +87,7 @@ func defineVisitor(b *strings.Builder, base string, types []typeDesc) {
 }
 
 func defineType(b *strings.Builder, base string, t typeDesc) {
-	fmt.Fprintf(b, "type %s[T any] struct {\n", t.name)
+	fmt.Fprintf(b, "type %s struct {\n", t.name)
 
 	for fname, ftype := range t.fields() {
 		fmt.Fprintf(b, "\t%s %s\n", fname, ftype)
@@ -100,7 +100,7 @@ func defineType(b *strings.Builder, base string, t typeDesc) {
 	defineTypeConstructor(b, t)
 
 	// implement Expr interface
-	fmt.Fprintf(b, "func (self %s[T]) Accept(visitor %sVisitor[T]) (T, error) {\n", t.name, base)
+	fmt.Fprintf(b, "func (self %s) Accept(visitor %sVisitor) (any, error) {\n", t.name, base)
 	fmt.Fprintf(b, "\treturn visitor.Visit%s%s(self)\n", t.name, base)
 	fmt.Fprintln(b, "}")
 
@@ -108,7 +108,7 @@ func defineType(b *strings.Builder, base string, t typeDesc) {
 }
 
 func defineTypeConstructor(b *strings.Builder, t typeDesc) {
-	fmt.Fprintf(b, "func New%s[T any](", t.name)
+	fmt.Fprintf(b, "func New%s(", t.name)
 	for i, f := range t.fieldList {
 		if i > 0 {
 			fmt.Fprint(b, ", ")
@@ -116,8 +116,8 @@ func defineTypeConstructor(b *strings.Builder, t typeDesc) {
 		fmt.Fprintf(b, "%s %s", strings.ToLower(f.name), f.typ)
 	}
 
-	fmt.Fprintf(b, ") %s[T] {\n", t.name)
-	fmt.Fprintf(b, "\treturn %s[T]{\n", t.name)
+	fmt.Fprintf(b, ") %s {\n", t.name)
+	fmt.Fprintf(b, "\treturn %s{\n", t.name)
 
 	for _, f := range t.fieldList {
 		fmt.Fprintf(b, "\t\t%s: %s,\n", f.name, strings.ToLower(f.name))

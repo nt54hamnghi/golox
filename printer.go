@@ -7,31 +7,35 @@ import (
 
 type AstPrinter struct{}
 
-func (p AstPrinter) String(expr Expr[string]) string {
+func (p AstPrinter) String(expr Expr) string {
 	repr, _ := expr.Accept(p)
-	return repr
+	if v, ok := repr.(string); ok {
+		return v
+	} else {
+		panic("AstPrinter: expected string result from expr.Accept")
+	}
 }
 
-func (p AstPrinter) VisitLiteralExpr(expr Literal[string]) (string, error) {
+func (p AstPrinter) VisitLiteralExpr(expr Literal) (any, error) {
 	if expr.Value == nil {
 		return "nil", nil
 	}
 	return fmt.Sprintf("%v", expr.Value), nil
 }
 
-func (p AstPrinter) VisitGroupingExpr(expr Grouping[string]) (string, error) {
+func (p AstPrinter) VisitGroupingExpr(expr Grouping) (any, error) {
 	return p.parenthesize("group", expr.Expression)
 }
 
-func (p AstPrinter) VisitUnaryExpr(expr Unary[string]) (string, error) {
+func (p AstPrinter) VisitUnaryExpr(expr Unary) (any, error) {
 	return p.parenthesize(expr.Operator.Lexeme, expr.Right)
 }
 
-func (p AstPrinter) VisitBinaryExpr(expr Binary[string]) (string, error) {
+func (p AstPrinter) VisitBinaryExpr(expr Binary) (any, error) {
 	return p.parenthesize(expr.Operator.Lexeme, expr.Left, expr.Right)
 }
 
-func (p AstPrinter) parenthesize(name string, expr ...Expr[string]) (string, error) {
+func (p AstPrinter) parenthesize(name string, expr ...Expr) (any, error) {
 	var b strings.Builder
 
 	b.WriteString("(" + name)
@@ -48,10 +52,10 @@ func printExample() {
 	expr := NewBinary(
 		NewUnary(
 			NewToken(MINUS, "-", nil, 0),
-			NewLiteral[string](123),
+			NewLiteral(123),
 		),
 		NewToken(STAR, "*", nil, 0),
-		NewGrouping(NewLiteral[string](45.67)),
+		NewGrouping(NewLiteral(45.67)),
 	)
 	repr := printer.String(expr)
 	fmt.Println(repr)

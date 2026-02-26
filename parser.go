@@ -4,27 +4,26 @@ import (
 	"slices"
 )
 
-type Parser[T any] struct {
-	tokens   []Token
-	current  int
-	_phantom *T
+type Parser struct {
+	tokens  []Token
+	current int
 }
 
-func NewParser[T any](tokens []Token) Parser[T] {
-	return Parser[T]{tokens, 0, new(T)}
+func NewParser(tokens []Token) Parser {
+	return Parser{tokens, 0}
 }
 
-func (p Parser[T]) Parse() (Expr[T], error) {
+func (p Parser) Parse() (Expr, error) {
 	return p.expression()
 }
 
 // expression → equality ;
-func (p *Parser[T]) expression() (Expr[T], error) {
+func (p *Parser) expression() (Expr, error) {
 	return p.equality()
 }
 
 // equality → comparison ( ( "!=" | "==" ) comparison )* ;
-func (p *Parser[T]) equality() (Expr[T], error) {
+func (p *Parser) equality() (Expr, error) {
 	expr, err := p.comparison()
 	if err != nil {
 		return nil, err
@@ -43,7 +42,7 @@ func (p *Parser[T]) equality() (Expr[T], error) {
 }
 
 // comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-func (p *Parser[T]) comparison() (Expr[T], error) {
+func (p *Parser) comparison() (Expr, error) {
 	expr, err := p.term()
 	if err != nil {
 		return nil, err
@@ -62,7 +61,7 @@ func (p *Parser[T]) comparison() (Expr[T], error) {
 }
 
 // term → factor ( ( "-" | "+" ) factor )* ;
-func (p *Parser[T]) term() (Expr[T], error) {
+func (p *Parser) term() (Expr, error) {
 	expr, err := p.factor()
 	if err != nil {
 		return nil, err
@@ -81,7 +80,7 @@ func (p *Parser[T]) term() (Expr[T], error) {
 }
 
 // factor → unary ( ( "/" | "*" ) unary )* ;
-func (p *Parser[T]) factor() (Expr[T], error) {
+func (p *Parser) factor() (Expr, error) {
 	expr, err := p.unary()
 	if err != nil {
 		return nil, err
@@ -100,7 +99,7 @@ func (p *Parser[T]) factor() (Expr[T], error) {
 }
 
 // unary → ( "!" | "-" ) unary | primary ;
-func (p *Parser[T]) unary() (Expr[T], error) {
+func (p *Parser) unary() (Expr, error) {
 	if p.match(BANG, MINUS) {
 		operator := p.previous()
 		right, err := p.unary()
@@ -113,18 +112,18 @@ func (p *Parser[T]) unary() (Expr[T], error) {
 }
 
 // primary → NUMBER | STRING | "true" | "false" | "nil"| "(" expression ")" ;
-func (p *Parser[T]) primary() (Expr[T], error) {
+func (p *Parser) primary() (Expr, error) {
 	if p.match(FALSE) {
-		return NewLiteral[T](false), nil
+		return NewLiteral(false), nil
 	}
 	if p.match(TRUE) {
-		return NewLiteral[T](true), nil
+		return NewLiteral(true), nil
 	}
 	if p.match(NIL) {
-		return NewLiteral[T](nil), nil
+		return NewLiteral(nil), nil
 	}
 	if p.match(NUMBER, STRING) {
-		return NewLiteral[T](p.previous().Literal), nil
+		return NewLiteral(p.previous().Literal), nil
 	}
 
 	if p.match(LEFT_PAREN) {
@@ -144,7 +143,7 @@ func (p *Parser[T]) primary() (Expr[T], error) {
 // match checks to see if the current token has any of the given types.
 // If so, it consumes the token and returns true.
 // Otherwise, it returns false, leaving the current token alone.
-func (p *Parser[T]) match(types ...TokenType) bool {
+func (p *Parser) match(types ...TokenType) bool {
 	if slices.ContainsFunc(types, p.check) {
 		p.advance()
 		return true
@@ -155,7 +154,7 @@ func (p *Parser[T]) match(types ...TokenType) bool {
 
 // consume checks if the next token is of the expected type.
 // If so, it consumes and returns the token. Otherwise, it returns an error.
-func (p *Parser[T]) consume(expected TokenType, message string) (Token, error) {
+func (p *Parser) consume(expected TokenType, message string) (Token, error) {
 	if p.check(expected) {
 		return p.advance(), nil
 	}
@@ -164,7 +163,7 @@ func (p *Parser[T]) consume(expected TokenType, message string) (Token, error) {
 
 // check returns true if the current token is of the given type.
 // It never consumes the token.
-func (p Parser[T]) check(expected TokenType) bool {
+func (p Parser) check(expected TokenType) bool {
 	if p.isAtEnd() {
 		return false
 	}
@@ -172,7 +171,7 @@ func (p Parser[T]) check(expected TokenType) bool {
 }
 
 // advance consumes the current token and returns it.
-func (p *Parser[T]) advance() Token {
+func (p *Parser) advance() Token {
 	if !p.isAtEnd() {
 		p.current++
 	}
@@ -180,27 +179,27 @@ func (p *Parser[T]) advance() Token {
 }
 
 // isAtEnd checks if we’ve run out of tokens to parse.
-func (p Parser[T]) isAtEnd() bool {
+func (p Parser) isAtEnd() bool {
 	return p.peek().Type == EOF
 }
 
 // peek returns the current token we have yet to consume.
-func (p Parser[T]) peek() Token {
+func (p Parser) peek() Token {
 	return p.tokens[p.current]
 }
 
 // previous returns the most recently consumed token.
-func (p Parser[T]) previous() Token {
+func (p Parser) previous() Token {
 	return p.tokens[p.current-1]
 }
 
-func (p Parser[T]) error(message string) error {
+func (p Parser) error(message string) error {
 	return ErrorAtToken(p.peek(), message)
 }
 
 // synchronize attempts to recover from a parsing error
 // by discarding tokens until it has found a statement boundary.
-func (p Parser[T]) synchronize() {
+func (p Parser) synchronize() {
 	p.advance()
 
 	for !p.isAtEnd() {

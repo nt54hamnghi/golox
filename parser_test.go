@@ -6,14 +6,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func parseExpression(source string) (Expr[string], error) {
+func parseExpression(source string) (Expr, error) {
 	scanner := NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	if err != nil {
 		return nil, err
 	}
 
-	parser := NewParser[string](tokens)
+	parser := NewParser(tokens)
 	return parser.Parse()
 }
 
