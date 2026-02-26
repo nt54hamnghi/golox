@@ -81,12 +81,12 @@ func run(src string) error {
 	}
 
 	parser := NewParser(tokens)
-	expr, err := parser.Parse()
+	prog, err := parser.Parse()
 	if err != nil {
 		return err
 	}
 
-	err = interpreter.Interpret(expr)
+	err = interpreter.Interpret(prog)
 	if err != nil {
 		return err
 	}

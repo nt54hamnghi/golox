@@ -13,8 +13,52 @@ func NewParser(tokens []Token) Parser {
 	return Parser{tokens, 0}
 }
 
-func (p Parser) Parse() (Expr, error) {
-	return p.expression()
+// program → statement* EOF ;
+func (p Parser) Parse() ([]Stmt, error) {
+	stmts := make([]Stmt, 0)
+
+	for !p.isAtEnd() {
+		s, err := p.statement()
+		if err != nil {
+			return nil, err
+		}
+
+		stmts = append(stmts, s)
+	}
+
+	return stmts, nil
+}
+
+// statement → exprStmt | printStmt ;
+func (p *Parser) statement() (Stmt, error) {
+	if p.match(PRINT) {
+		return p.printStatement()
+	}
+	return p.expressionStatement()
+}
+
+// printStmt → "print" expression ";" ;
+func (p *Parser) printStatement() (Stmt, error) {
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.consume(SEMICOLON, "Expect ';' after value."); err != nil {
+		return nil, err
+	}
+	return NewPrint(expr), nil
+}
+
+// exprStmt → expression ";" ;
+func (p *Parser) expressionStatement() (Stmt, error) {
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.consume(SEMICOLON, "Expect ';' after value."); err != nil {
+		return nil, err
+	}
+	return NewExpression(expr), nil
 }
 
 // expression → equality ;

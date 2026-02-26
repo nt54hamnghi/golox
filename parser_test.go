@@ -14,7 +14,7 @@ func parseExpression(source string) (Expr, error) {
 	}
 
 	parser := NewParser(tokens)
-	return parser.Parse()
+	return parser.expression()
 }
 
 func TestParsingExpressionSyntacticErrors(t *testing.T) {

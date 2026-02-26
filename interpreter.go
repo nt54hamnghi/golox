@@ -8,18 +8,40 @@ type Object any
 
 type Interpreter struct{}
 
-func (i Interpreter) Interpret(expr Expr) error {
-	value, err := i.evaluate(expr)
-	if err != nil {
-		return err
+func (i Interpreter) Interpret(prog []Stmt) error {
+	for _, stmt := range prog {
+		_, err := i.execute(stmt)
+		if err != nil {
+			return err
+		}
 	}
 
-	fmt.Println(stringify(value))
 	return nil
 }
 
-func (i Interpreter) evaluate(expr Expr) (any, error) {
+func (i Interpreter) execute(stmt Stmt) (any, error) {
+	return stmt.Accept(i)
+}
+
+func (i Interpreter) evaluate(expr Expr) (Object, error) {
 	return expr.Accept(i)
+}
+
+func (i Interpreter) VisitExpressionStmt(expr Expression) (any, error) {
+	_, err := i.evaluate(expr.Expression)
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+func (i Interpreter) VisitPrintStmt(expr Print) (any, error) {
+	v, err := i.evaluate(expr.Expression)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(v)
+	return nil, nil
 }
 
 func (i Interpreter) VisitLiteralExpr(expr Literal) (any, error) {
