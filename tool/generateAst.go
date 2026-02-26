@@ -17,14 +17,17 @@ func main() {
 
 	outputDir := args[0]
 
-	types := []typeDesc{
+	defineAst(outputDir, "Expr", []typeDesc{
 		{"Literal", []field{{"Value", "any"}}},
 		{"Grouping", []field{{"Expression", "Expr[T]"}}},
 		{"Unary", []field{{"Operator", "Token"}, {"Right", "Expr[T]"}}},
 		{"Binary", []field{{"Left", "Expr[T]"}, {"Operator", "Token"}, {"Right", "Expr[T]"}}},
-	}
+	})
 
-	defineAst(outputDir, "Expr", types)
+	defineAst(outputDir, "Stmt", []typeDesc{
+		{"Expression", []field{{"Expression", "Expr[T]"}}},
+		{"Print", []field{{"Expression", "Expr[T]"}}},
+	})
 }
 
 type typeDesc struct {
@@ -52,8 +55,8 @@ func defineAst(outputDir string, base string, types []typeDesc) error {
 
 	fmt.Fprintln(&b, "package main")
 	fmt.Fprintln(&b)
-	fmt.Fprintln(&b, "type Expr[T any] interface {")
-	fmt.Fprintf(&b, "\tAccept(visitor Visitor[T]) (T, error)\n")
+	fmt.Fprintf(&b, "type %s[T any] interface {\n", base)
+	fmt.Fprintf(&b, "\tAccept(visitor %sVisitor[T]) (T, error)\n", base)
 	fmt.Fprintln(&b, "}")
 	fmt.Fprintln(&b)
 
@@ -72,7 +75,7 @@ func defineAst(outputDir string, base string, types []typeDesc) error {
 }
 
 func defineVisitor(b *strings.Builder, base string, types []typeDesc) {
-	fmt.Fprintln(b, "type Visitor[T any] interface {")
+	fmt.Fprintf(b, "type %sVisitor[T any] interface {\n", base)
 
 	for _, t := range types {
 		fmt.Fprintf(b, "\tVisit%s%s(expr %s[T]) (T, error)", t.name, base, t.name)
@@ -97,7 +100,7 @@ func defineType(b *strings.Builder, base string, t typeDesc) {
 	defineTypeConstructor(b, t)
 
 	// implement Expr interface
-	fmt.Fprintf(b, "func (self %s[T]) Accept(visitor Visitor[T]) (T, error) {\n", t.name)
+	fmt.Fprintf(b, "func (self %s[T]) Accept(visitor %sVisitor[T]) (T, error) {\n", t.name, base)
 	fmt.Fprintf(b, "\treturn visitor.Visit%s%s(self)\n", t.name, base)
 	fmt.Fprintln(b, "}")
 
