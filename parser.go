@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"slices"
 )
 
@@ -13,20 +15,50 @@ func NewParser(tokens []Token) Parser {
 	return Parser{tokens, 0}
 }
 
-// program → statement* EOF ;
-func (p Parser) Parse() ([]Stmt, error) {
+// program → declaration* EOF ;
+func (p Parser) Parse() []Stmt {
 	stmts := make([]Stmt, 0)
 
 	for !p.isAtEnd() {
-		s, err := p.statement()
+		s, err := p.declaration()
 		if err != nil {
-			return nil, err
+			fmt.Fprintln(os.Stderr, err)
+			p.synchronize()
+		} else {
+			stmts = append(stmts, s)
 		}
-
-		stmts = append(stmts, s)
 	}
 
-	return stmts, nil
+	return stmts
+}
+
+// declaration → varDecl | statement ;
+func (p *Parser) declaration() (Stmt, error) {
+	if p.match(VAR) {
+		return p.varDeclaration()
+	}
+	return p.statement()
+}
+
+// varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
+func (p *Parser) varDeclaration() (Stmt, error) {
+	ident, err := p.consume(IDENTIFIER, "Expect variable name.")
+	if err != nil {
+		return nil, err
+	}
+
+	var init Expr
+	if p.match(EQUAL) {
+		if init, err = p.expression(); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := p.expectSemicolon(); err != nil {
+		return nil, err
+	}
+
+	return NewVar(ident, init), nil
 }
 
 // statement → exprStmt | printStmt ;
@@ -43,7 +75,7 @@ func (p *Parser) printStatement() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.consume(SEMICOLON, "Expect ';' after value."); err != nil {
+	if err := p.expectSemicolon(); err != nil {
 		return nil, err
 	}
 	return NewPrint(expr), nil
@@ -55,7 +87,7 @@ func (p *Parser) expressionStatement() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.consume(SEMICOLON, "Expect ';' after value."); err != nil {
+	if err := p.expectSemicolon(); err != nil {
 		return nil, err
 	}
 	return NewExpression(expr), nil
@@ -155,7 +187,7 @@ func (p *Parser) unary() (Expr, error) {
 	return p.primary()
 }
 
-// primary → NUMBER | STRING | "true" | "false" | "nil"| "(" expression ")" ;
+// primary → NUMBER | STRING | "true" | "false" | "nil"| "(" expression ")" | IDENTIFIER ;
 func (p *Parser) primary() (Expr, error) {
 	if p.match(FALSE) {
 		return NewLiteral(false), nil
@@ -181,6 +213,10 @@ func (p *Parser) primary() (Expr, error) {
 		return NewGrouping(expr), nil
 	}
 
+	if p.match(IDENTIFIER) {
+		return NewVariable(p.previous()), nil
+	}
+
 	return nil, p.error("Expect expression.")
 }
 
@@ -203,6 +239,15 @@ func (p *Parser) consume(expected TokenType, message string) (Token, error) {
 		return p.advance(), nil
 	}
 	return Token{}, p.error(message)
+}
+
+// expectSemicolon consumes a required ';' token.
+// It returns an error when the current token is not a semicolon.
+func (p *Parser) expectSemicolon() error {
+	if _, err := p.consume(SEMICOLON, "Expect ';' after value."); err != nil {
+		return err
+	}
+	return nil
 }
 
 // check returns true if the current token is of the given type.
@@ -243,7 +288,7 @@ func (p Parser) error(message string) error {
 
 // synchronize attempts to recover from a parsing error
 // by discarding tokens until it has found a statement boundary.
-func (p Parser) synchronize() {
+func (p *Parser) synchronize() {
 	p.advance()
 
 	for !p.isAtEnd() {

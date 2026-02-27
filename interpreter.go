@@ -6,9 +6,17 @@ import (
 
 type Object any
 
-type Interpreter struct{}
+type Interpreter struct {
+	environment Environment
+}
 
-func (i Interpreter) Interpret(prog []Stmt) error {
+func NewInterpreter() Interpreter {
+	return Interpreter{
+		environment: NewEnvironment(),
+	}
+}
+
+func (i *Interpreter) Interpret(prog []Stmt) error {
 	for _, stmt := range prog {
 		_, err := i.execute(stmt)
 		if err != nil {
@@ -19,7 +27,7 @@ func (i Interpreter) Interpret(prog []Stmt) error {
 	return nil
 }
 
-func (i Interpreter) execute(stmt Stmt) (any, error) {
+func (i *Interpreter) execute(stmt Stmt) (any, error) {
 	return stmt.Accept(i)
 }
 
@@ -27,16 +35,36 @@ func (i Interpreter) evaluate(expr Expr) (Object, error) {
 	return expr.Accept(i)
 }
 
-func (i Interpreter) VisitExpressionStmt(expr Expression) (any, error) {
-	_, err := i.evaluate(expr.Expression)
+// VisitVarStmt implements [StmtVisitor].
+func (i *Interpreter) VisitVarStmt(stmt Var) (any, error) {
+	var (
+		value Object
+		err   error
+	)
+
+	if stmt.Initializer != nil {
+		value, err = i.evaluate(stmt.Initializer)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	i.environment.Define(stmt.Name.Lexeme, value)
+	return nil, nil
+}
+
+// VisitExpressionStmt implements [StmtVisitor].
+func (i Interpreter) VisitExpressionStmt(stmt Expression) (any, error) {
+	_, err := i.evaluate(stmt.Expression)
 	if err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
-func (i Interpreter) VisitPrintStmt(expr Print) (any, error) {
-	v, err := i.evaluate(expr.Expression)
+// VisitPrintStmt implements [StmtVisitor].
+func (i Interpreter) VisitPrintStmt(stmt Print) (any, error) {
+	v, err := i.evaluate(stmt.Expression)
 	if err != nil {
 		return nil, err
 	}
@@ -44,14 +72,22 @@ func (i Interpreter) VisitPrintStmt(expr Print) (any, error) {
 	return nil, nil
 }
 
+// VisitVariableExpr implements [ExprVisitor].
+func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
+	return i.environment.Get(expr.Name)
+}
+
+// VisitLiteralExpr implements [ExprVisitor].
 func (i Interpreter) VisitLiteralExpr(expr Literal) (any, error) {
 	return expr.Value, nil
 }
 
+// VisitGroupingExpr implements [ExprVisitor].
 func (i Interpreter) VisitGroupingExpr(expr Grouping) (any, error) {
 	return i.evaluate(expr.Expression)
 }
 
+// VisitUnaryExpr implements [ExprVisitor].
 func (i Interpreter) VisitUnaryExpr(expr Unary) (any, error) {
 	right, err := i.evaluate(expr.Right)
 	if err != nil {
@@ -75,6 +111,7 @@ func (i Interpreter) VisitUnaryExpr(expr Unary) (any, error) {
 	panic("unreachable")
 }
 
+// VisitBinaryExpr implements [ExprVisitor].
 func (i Interpreter) VisitBinaryExpr(expr Binary) (any, error) {
 	left, err := i.evaluate(expr.Left)
 	if err != nil {

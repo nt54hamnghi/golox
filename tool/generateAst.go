@@ -21,12 +21,14 @@ func main() {
 		{"Literal", []field{{"Value", "any"}}},
 		{"Grouping", []field{{"Expression", "Expr"}}},
 		{"Unary", []field{{"Operator", "Token"}, {"Right", "Expr"}}},
+		{"Variable", []field{{"Name", "Token"}}},
 		{"Binary", []field{{"Left", "Expr"}, {"Operator", "Token"}, {"Right", "Expr"}}},
 	})
 
 	defineAst(outputDir, "Stmt", []typeDesc{
 		{"Expression", []field{{"Expression", "Expr"}}},
 		{"Print", []field{{"Expression", "Expr"}}},
+		{"Var", []field{{"Name", "Token"}, {"Initializer", "Expr"}}},
 	})
 }
 

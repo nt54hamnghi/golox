@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-var interpreter Interpreter
+var interpreter Interpreter = NewInterpreter()
 
 func main() {
 	args := os.Args
@@ -81,10 +81,7 @@ func run(src string) error {
 	}
 
 	parser := NewParser(tokens)
-	prog, err := parser.Parse()
-	if err != nil {
-		return err
-	}
+	prog := parser.Parse()
 
 	err = interpreter.Interpret(prog)
 	if err != nil {

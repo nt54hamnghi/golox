@@ -31,7 +31,7 @@ func TestParsingExpressionSyntacticErrors(t *testing.T) {
 		{
 			name:    "grouping with identifier without closing paren",
 			source:  "(foo",
-			wantErr: "[line 1] Error at 'foo': Expect expression.",
+			wantErr: "[line 1] Error at end: Expect ')' after expression.",
 		},
 		{
 			name:    "operator without right operand",

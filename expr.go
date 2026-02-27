@@ -8,6 +8,7 @@ type ExprVisitor interface {
 	VisitLiteralExpr(expr Literal) (any, error)
 	VisitGroupingExpr(expr Grouping) (any, error)
 	VisitUnaryExpr(expr Unary) (any, error)
+	VisitVariableExpr(expr Variable) (any, error)
 	VisitBinaryExpr(expr Binary) (any, error)
 }
 
@@ -41,13 +42,13 @@ func (self Grouping) Accept(visitor ExprVisitor) (any, error) {
 
 type Unary struct {
 	Operator Token
-	Right Expr
+	Right    Expr
 }
 
 func NewUnary(operator Token, right Expr) Unary {
 	return Unary{
 		Operator: operator,
-		Right: right,
+		Right:    right,
 	}
 }
 
@@ -55,21 +56,34 @@ func (self Unary) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitUnaryExpr(self)
 }
 
+type Variable struct {
+	Name Token
+}
+
+func NewVariable(name Token) Variable {
+	return Variable{
+		Name: name,
+	}
+}
+
+func (self Variable) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitVariableExpr(self)
+}
+
 type Binary struct {
-	Left Expr
+	Left     Expr
 	Operator Token
-	Right Expr
+	Right    Expr
 }
 
 func NewBinary(left Expr, operator Token, right Expr) Binary {
 	return Binary{
-		Left: left,
+		Left:     left,
 		Operator: operator,
-		Right: right,
+		Right:    right,
 	}
 }
 
 func (self Binary) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitBinaryExpr(self)
 }
-

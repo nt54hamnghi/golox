@@ -40,6 +40,8 @@ type RuntimeError struct {
 	message string
 }
 
+// TODO: add a constructor for RuntimeError
+
 // Error returns the runtime error message.
 func (r RuntimeError) Error() string {
 	return fmt.Sprintf("%s\n[line %d]", r.message, r.token.Line)

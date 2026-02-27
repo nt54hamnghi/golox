@@ -16,6 +16,12 @@ func (p AstPrinter) String(expr Expr) string {
 	}
 }
 
+// VisitVariableExpr implements [ExprVisitor].
+func (p AstPrinter) VisitVariableExpr(expr Variable) (any, error) {
+	return expr.Name.Lexeme, nil
+}
+
+// VisitLiteralExpr implements [ExprVisitor].
 func (p AstPrinter) VisitLiteralExpr(expr Literal) (any, error) {
 	if expr.Value == nil {
 		return "nil", nil
@@ -23,14 +29,17 @@ func (p AstPrinter) VisitLiteralExpr(expr Literal) (any, error) {
 	return fmt.Sprintf("%v", expr.Value), nil
 }
 
+// VisitGroupingExpr implements [ExprVisitor].
 func (p AstPrinter) VisitGroupingExpr(expr Grouping) (any, error) {
 	return p.parenthesize("group", expr.Expression)
 }
 
+// VisitUnaryExpr implements [ExprVisitor].
 func (p AstPrinter) VisitUnaryExpr(expr Unary) (any, error) {
 	return p.parenthesize(expr.Operator.Lexeme, expr.Right)
 }
 
+// VisitBinaryExpr implements [ExprVisitor].
 func (p AstPrinter) VisitBinaryExpr(expr Binary) (any, error) {
 	return p.parenthesize(expr.Operator.Lexeme, expr.Left, expr.Right)
 }
