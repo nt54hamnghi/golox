@@ -93,9 +93,36 @@ func (p *Parser) expressionStatement() (Stmt, error) {
 	return NewExpression(expr), nil
 }
 
-// expression → equality ;
+// expression → assignment ;
 func (p *Parser) expression() (Expr, error) {
-	return p.equality()
+	return p.assignment()
+}
+
+// assignment → IDENTIFIER "=" assignment | equality ;
+func (p *Parser) assignment() (Expr, error) {
+	expr, err := p.equality()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.match(EQUAL) {
+		equal := p.previous()
+		// assignment is right-associative, so recursively call assignment()
+		// to have it resolves first before we create a new Assignment expression
+		value, err := p.assignment()
+		if err != nil {
+			return nil, err
+		}
+
+		if variable, ok := expr.(Variable); ok {
+			name := variable.Name
+			return NewAssignment(name, value), nil
+		}
+
+		return nil, ErrorAtToken(equal, "Invalid assignment target.")
+	}
+
+	return expr, nil
 }
 
 // equality → comparison ( ( "!=" | "==" ) comparison )* ;

@@ -72,6 +72,11 @@ func (i Interpreter) VisitPrintStmt(stmt Print) (any, error) {
 	return nil, nil
 }
 
+// VisitAssignmentExpr implements [ExprVisitor].
+func (i Interpreter) VisitAssignmentExpr(expr Assignment) (any, error) {
+	panic("unimplemented")
+}
+
 // VisitVariableExpr implements [ExprVisitor].
 func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
 	return i.environment.Get(expr.Name)

@@ -16,6 +16,11 @@ func (p AstPrinter) String(expr Expr) string {
 	}
 }
 
+// VisitAssignmentExpr implements [ExprVisitor].
+func (p AstPrinter) VisitAssignmentExpr(expr Assignment) (any, error) {
+	panic("unimplemented")
+}
+
 // VisitVariableExpr implements [ExprVisitor].
 func (p AstPrinter) VisitVariableExpr(expr Variable) (any, error) {
 	return expr.Name.Lexeme, nil

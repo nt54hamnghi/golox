@@ -22,6 +22,7 @@ func main() {
 		{"Grouping", []field{{"Expression", "Expr"}}},
 		{"Unary", []field{{"Operator", "Token"}, {"Right", "Expr"}}},
 		{"Variable", []field{{"Name", "Token"}}},
+		{"Assignment", []field{{"Name", "Token"}, {"Value", "Expr"}}},
 		{"Binary", []field{{"Left", "Expr"}, {"Operator", "Token"}, {"Right", "Expr"}}},
 	})
 
@@ -80,7 +81,7 @@ func defineVisitor(b *strings.Builder, base string, types []typeDesc) {
 	fmt.Fprintf(b, "type %sVisitor interface {\n", base)
 
 	for _, t := range types {
-		fmt.Fprintf(b, "\tVisit%s%s(expr %s) (any, error)", t.name, base, t.name)
+		fmt.Fprintf(b, "\tVisit%s%s(%s %s) (any, error)", t.name, base, strings.ToLower(base), t.name)
 		fmt.Fprintln(b)
 	}
 

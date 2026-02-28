@@ -9,6 +9,7 @@ type ExprVisitor interface {
 	VisitGroupingExpr(expr Grouping) (any, error)
 	VisitUnaryExpr(expr Unary) (any, error)
 	VisitVariableExpr(expr Variable) (any, error)
+	VisitAssignmentExpr(expr Assignment) (any, error)
 	VisitBinaryExpr(expr Binary) (any, error)
 }
 
@@ -68,6 +69,22 @@ func NewVariable(name Token) Variable {
 
 func (self Variable) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitVariableExpr(self)
+}
+
+type Assignment struct {
+	Name  Token
+	Value Expr
+}
+
+func NewAssignment(name Token, value Expr) Assignment {
+	return Assignment{
+		Name:  name,
+		Value: value,
+	}
+}
+
+func (self Assignment) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitAssignmentExpr(self)
 }
 
 type Binary struct {
