@@ -1,4 +1,7 @@
-var a = 1;
-print a;
-print a = 2;
-print a;
+var a = "hello";
+var b = "world";
+{
+    var a = "hi";
+    print a + b;
+}
+print a + b;

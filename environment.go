@@ -1,30 +1,48 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Environment struct {
-	values map[string]Object
+	enclosing *Environment
+	values    map[string]Object
 }
 
+// NewEnvironment creates the global-scope environment
 func NewEnvironment() Environment {
 	return Environment{
 		values: make(map[string]Object),
 	}
 }
 
+// NewEnclosedEnvinronment creates a local-scope environment nested inside a parent scope.
+func NewEnclosedEnvinronment(enclosing *Environment) Environment {
+	return Environment{
+		enclosing,
+		make(map[string]Object),
+	}
+}
+
 // Define adds or updates a variable in the environment.
 // It does not check if the name already exists, so defining the same name redefines it.
+// Defining a new variable always happens in the most inner scope, which is the current one.
 func (e *Environment) Define(name string, value Object) {
 	e.values[name] = value
 }
 
-// Assign updates an existing variable in the current environment.
-// If the variable is not already defined, it returns a runtime error.
+// Assign updates an existing variable by name.
+// It first checks the current environment, then walks outward through enclosing scopes.
+// If no scope defines the variable, it returns a runtime error.
 // Unlike Define, this method does not create new bindings.
 func (e *Environment) Assign(name Token, value Object) error {
 	if _, exist := e.values[name.Lexeme]; exist {
 		e.values[name.Lexeme] = value
 		return nil
+	}
+
+	if e.enclosing != nil {
+		return e.enclosing.Assign(name, value)
 	}
 
 	return RuntimeError{
@@ -33,8 +51,9 @@ func (e *Environment) Assign(name Token, value Object) error {
 	}
 }
 
-// Get retrieves a variable when an identifier is evaluated.
-// If the variable has not been defined at evaluation time, it returns a runtime error.
+// Get resolves a variable by name at evaluation time in lexical scope order.
+// It starts in the current (innermost) environment, then walks outward through enclosing scopes.
+// If no scope defines the variable, it returns a runtime error.
 // Merely referring to a variable inside a function body is fine until that code is executed.
 //
 // Lox code example:
@@ -48,6 +67,10 @@ func (e *Environment) Assign(name Token, value Object) error {
 func (e Environment) Get(name Token) (Object, error) {
 	if obj, exist := e.values[name.Lexeme]; exist {
 		return obj, nil
+	}
+
+	if e.enclosing != nil {
+		return e.enclosing.Get(name)
 	}
 
 	return nil, RuntimeError{

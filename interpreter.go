@@ -35,6 +35,27 @@ func (i *Interpreter) evaluate(expr Expr) (Object, error) {
 	return expr.Accept(i)
 }
 
+func (i *Interpreter) executeBlock(block Block) (any, error) {
+	outter := i.environment
+	i.environment = NewEnclosedEnvinronment(&outter)
+	defer func() {
+		i.environment = outter
+	}()
+
+	for _, s := range block.Stmts {
+		if _, err := i.execute(s); err != nil {
+			return nil, err
+		}
+	}
+
+	return nil, nil
+}
+
+// VisitBlockStmt implements [StmtVisitor].
+func (i *Interpreter) VisitBlockStmt(stmt Block) (any, error) {
+	return i.executeBlock(stmt)
+}
+
 // VisitVarStmt implements [StmtVisitor].
 func (i *Interpreter) VisitVarStmt(stmt Var) (any, error) {
 	var (

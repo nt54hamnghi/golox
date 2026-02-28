@@ -8,6 +8,7 @@ type StmtVisitor interface {
 	VisitExpressionStmt(stmt Expression) (any, error)
 	VisitPrintStmt(stmt Print) (any, error)
 	VisitVarStmt(stmt Var) (any, error)
+	VisitBlockStmt(stmt Block) (any, error)
 }
 
 type Expression struct {
@@ -52,4 +53,18 @@ func NewVar(name Token, initializer Expr) Var {
 
 func (self Var) Accept(visitor StmtVisitor) (any, error) {
 	return visitor.VisitVarStmt(self)
+}
+
+type Block struct {
+	Stmts []Stmt
+}
+
+func NewBlock(stmts []Stmt) Block {
+	return Block{
+		Stmts: stmts,
+	}
+}
+
+func (self Block) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitBlockStmt(self)
 }
