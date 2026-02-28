@@ -31,7 +31,7 @@ func (i *Interpreter) execute(stmt Stmt) (any, error) {
 	return stmt.Accept(i)
 }
 
-func (i Interpreter) evaluate(expr Expr) (Object, error) {
+func (i *Interpreter) evaluate(expr Expr) (Object, error) {
 	return expr.Accept(i)
 }
 
@@ -54,7 +54,7 @@ func (i *Interpreter) VisitVarStmt(stmt Var) (any, error) {
 }
 
 // VisitExpressionStmt implements [StmtVisitor].
-func (i Interpreter) VisitExpressionStmt(stmt Expression) (any, error) {
+func (i *Interpreter) VisitExpressionStmt(stmt Expression) (any, error) {
 	_, err := i.evaluate(stmt.Expression)
 	if err != nil {
 		return nil, err
@@ -63,18 +63,24 @@ func (i Interpreter) VisitExpressionStmt(stmt Expression) (any, error) {
 }
 
 // VisitPrintStmt implements [StmtVisitor].
-func (i Interpreter) VisitPrintStmt(stmt Print) (any, error) {
+func (i *Interpreter) VisitPrintStmt(stmt Print) (any, error) {
 	v, err := i.evaluate(stmt.Expression)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(v)
+	fmt.Println(stringify(v))
 	return nil, nil
 }
 
 // VisitAssignmentExpr implements [ExprVisitor].
-func (i Interpreter) VisitAssignmentExpr(expr Assignment) (any, error) {
-	panic("unimplemented")
+func (i *Interpreter) VisitAssignmentExpr(expr Assignment) (any, error) {
+	value, err := i.evaluate(expr.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	i.environment.Assign(expr.Name, value)
+	return value, nil
 }
 
 // VisitVariableExpr implements [ExprVisitor].
@@ -88,12 +94,12 @@ func (i Interpreter) VisitLiteralExpr(expr Literal) (any, error) {
 }
 
 // VisitGroupingExpr implements [ExprVisitor].
-func (i Interpreter) VisitGroupingExpr(expr Grouping) (any, error) {
+func (i *Interpreter) VisitGroupingExpr(expr Grouping) (any, error) {
 	return i.evaluate(expr.Expression)
 }
 
 // VisitUnaryExpr implements [ExprVisitor].
-func (i Interpreter) VisitUnaryExpr(expr Unary) (any, error) {
+func (i *Interpreter) VisitUnaryExpr(expr Unary) (any, error) {
 	right, err := i.evaluate(expr.Right)
 	if err != nil {
 		return nil, err
@@ -117,7 +123,7 @@ func (i Interpreter) VisitUnaryExpr(expr Unary) (any, error) {
 }
 
 // VisitBinaryExpr implements [ExprVisitor].
-func (i Interpreter) VisitBinaryExpr(expr Binary) (any, error) {
+func (i *Interpreter) VisitBinaryExpr(expr Binary) (any, error) {
 	left, err := i.evaluate(expr.Left)
 	if err != nil {
 		return nil, err
