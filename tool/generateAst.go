@@ -30,6 +30,11 @@ func main() {
 		{"Expression", []field{{"Expression", "Expr"}}},
 		{"Print", []field{{"Expression", "Expr"}}},
 		{"Var", []field{{"Name", "Token"}, {"Initializer", "Expr"}}},
+		{"If", []field{
+			{"Condition", "Expr"},
+			{"ThenBranch", "Stmt"},
+			{"ElseBranch", "Stmt"}},
+		},
 		{"Block", []field{{"Stmts", "[]Stmt"}}},
 	})
 }

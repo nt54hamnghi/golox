@@ -61,9 +61,12 @@ func (p *Parser) varDeclaration() (Stmt, error) {
 	return NewVar(ident, init), nil
 }
 
-// statement → exprStmt | printStmt | block ;
+// statement → exprStmt | ifStmt | printStmt | block ;
 func (p *Parser) statement() (Stmt, error) {
 	switch {
+
+	case p.match(IF):
+		return p.ifStatement()
 	case p.match(PRINT):
 		return p.printStatement()
 	case p.match(LEFT_BRACE):
@@ -71,6 +74,33 @@ func (p *Parser) statement() (Stmt, error) {
 	default:
 		return p.expressionStatement()
 	}
+}
+
+// ifStmt → "if" "(" expression ")" statement ( "else" statement )? ;
+func (p *Parser) ifStatement() (Stmt, error) {
+	if _, err := p.consume(RIGHT_PAREN, "Expect '(' after 'if'."); err != nil {
+		return nil, err
+	}
+	condition, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.consume(LEFT_PAREN, "Expect ')' after if condition."); err != nil {
+		return nil, err
+	}
+	thenBranch, err := p.statement()
+	if err != nil {
+		return nil, err
+	}
+
+	var elseBranch Stmt
+	if p.match(ELSE) {
+		if elseBranch, err = p.statement(); err != nil {
+			return nil, err
+		}
+	}
+
+	return NewIf(condition, thenBranch, elseBranch), nil
 }
 
 // block → "{" declaration* "}" ;

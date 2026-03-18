@@ -1,5 +1,14 @@
 # Repository Guidelines
 
+## Custom Commands
+- `.prep`:
+    - run `jj diff` or `jj diff --git` to review the changes in the current revision.
+    - write a commit message with an optional body.
+        - The optional body, if exists, should be a bulleted list of changes.
+        - Change descriptions should be start with a lowercase letter.
+    - run `jj desc -m "{commit-message}"` with the message.
+
+
 ## Project Structure & Module Organization
 - `main.go` is the entry point for the interpreter.
 - Core language pieces live at the repo root: `scanner.go`, `token.go`, `tokenType.go`, `expr.go`, and `printer.go`.

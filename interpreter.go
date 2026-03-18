@@ -74,6 +74,22 @@ func (i *Interpreter) VisitVarStmt(stmt Var) (any, error) {
 	return nil, nil
 }
 
+// VisitIfStmt implements [StmtVisitor].
+func (i *Interpreter) VisitIfStmt(stmt If) (any, error) {
+	condition, err := i.evaluate(stmt.Condition)
+	if err != nil {
+		return nil, err
+	}
+
+	if isTruthy(condition) {
+		return i.execute(stmt.ThenBranch)
+	} else if stmt.ElseBranch != nil {
+		return i.execute(stmt.ElseBranch)
+	}
+
+	return nil, nil
+}
+
 // VisitExpressionStmt implements [StmtVisitor].
 func (i *Interpreter) VisitExpressionStmt(stmt Expression) (any, error) {
 	_, err := i.evaluate(stmt.Expression)

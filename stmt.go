@@ -8,6 +8,7 @@ type StmtVisitor interface {
 	VisitExpressionStmt(stmt Expression) (any, error)
 	VisitPrintStmt(stmt Print) (any, error)
 	VisitVarStmt(stmt Var) (any, error)
+	VisitIfStmt(stmt If) (any, error)
 	VisitBlockStmt(stmt Block) (any, error)
 }
 
@@ -53,6 +54,24 @@ func NewVar(name Token, initializer Expr) Var {
 
 func (self Var) Accept(visitor StmtVisitor) (any, error) {
 	return visitor.VisitVarStmt(self)
+}
+
+type If struct {
+	Condition  Expr
+	ThenBranch Stmt
+	ElseBranch Stmt
+}
+
+func NewIf(condition Expr, thenBranch Stmt, elseBranch Stmt) If {
+	return If{
+		Condition:  condition,
+		ThenBranch: thenBranch,
+		ElseBranch: elseBranch,
+	}
+}
+
+func (self If) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitIfStmt(self)
 }
 
 type Block struct {
