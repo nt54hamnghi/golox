@@ -24,6 +24,7 @@ func main() {
 		{"Variable", []field{{"Name", "Token"}}},
 		{"Assignment", []field{{"Name", "Token"}, {"Value", "Expr"}}},
 		{"Binary", []field{{"Left", "Expr"}, {"Operator", "Token"}, {"Right", "Expr"}}},
+		{"Logical", []field{{"Left", "Expr"}, {"Operator", "Token"}, {"Right", "Expr"}}},
 	})
 
 	defineAst(outputDir, "Stmt", []typeDesc{

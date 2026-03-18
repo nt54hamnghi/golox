@@ -78,14 +78,14 @@ func (p *Parser) statement() (Stmt, error) {
 
 // ifStmt → "if" "(" expression ")" statement ( "else" statement )? ;
 func (p *Parser) ifStatement() (Stmt, error) {
-	if _, err := p.consume(RIGHT_PAREN, "Expect '(' after 'if'."); err != nil {
+	if _, err := p.consume(LEFT_PAREN, "Expect '(' after 'if'."); err != nil {
 		return nil, err
 	}
 	condition, err := p.expression()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.consume(LEFT_PAREN, "Expect ')' after if condition."); err != nil {
+	if _, err := p.consume(RIGHT_PAREN, "Expect ')' after if condition."); err != nil {
 		return nil, err
 	}
 	thenBranch, err := p.statement()
@@ -151,9 +151,9 @@ func (p *Parser) expression() (Expr, error) {
 	return p.assignment()
 }
 
-// assignment → IDENTIFIER "=" assignment | equality ;
+// assignment → IDENTIFIER "=" assignment | logic_or ;
 func (p *Parser) assignment() (Expr, error) {
-	expr, err := p.equality()
+	expr, err := p.logic_or()
 	if err != nil {
 		return nil, err
 	}
@@ -173,6 +173,46 @@ func (p *Parser) assignment() (Expr, error) {
 		}
 
 		return nil, ErrorAtToken(equal, "Invalid assignment target.")
+	}
+
+	return expr, nil
+}
+
+// logic_or → logic_and ( "or" logic_and )* ;
+func (p *Parser) logic_or() (Expr, error) {
+	expr, err := p.logic_and()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.match(OR) {
+		operator := p.previous()
+		right, err := p.logic_and()
+		if err != nil {
+			return nil, err
+		}
+		expr = NewLogical(expr, operator, right)
+
+	}
+
+	return expr, nil
+}
+
+// logic_and → equality ( "and" equality )* ;
+func (p *Parser) logic_and() (Expr, error) {
+	expr, err := p.equality()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.match(AND) {
+		operator := p.previous()
+		right, err := p.equality()
+		if err != nil {
+			return nil, err
+		}
+		expr = NewLogical(expr, operator, right)
+
 	}
 
 	return expr, nil

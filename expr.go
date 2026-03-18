@@ -11,6 +11,7 @@ type ExprVisitor interface {
 	VisitVariableExpr(expr Variable) (any, error)
 	VisitAssignmentExpr(expr Assignment) (any, error)
 	VisitBinaryExpr(expr Binary) (any, error)
+	VisitLogicalExpr(expr Logical) (any, error)
 }
 
 type Literal struct {
@@ -103,4 +104,22 @@ func NewBinary(left Expr, operator Token, right Expr) Binary {
 
 func (self Binary) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitBinaryExpr(self)
+}
+
+type Logical struct {
+	Left     Expr
+	Operator Token
+	Right    Expr
+}
+
+func NewLogical(left Expr, operator Token, right Expr) Logical {
+	return Logical{
+		Left:     left,
+		Operator: operator,
+		Right:    right,
+	}
+}
+
+func (self Logical) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitLogicalExpr(self)
 }

@@ -1,7 +1,1 @@
-var a = "hello";
-var b = "world";
-{
-    var a = "hi";
-    print a + b;
-}
-print a + b;
+if ( "hello" ) print "world";

@@ -130,6 +130,29 @@ func (i Interpreter) VisitLiteralExpr(expr Literal) (any, error) {
 	return expr.Value, nil
 }
 
+// VisitLogicalExpr implements [ExprVisitor].
+func (i *Interpreter) VisitLogicalExpr(expr Logical) (any, error) {
+	left, err := i.evaluate(expr.Left)
+	if err != nil {
+		return nil, err
+	}
+
+	switch expr.Operator.Type {
+	case OR:
+		if isTruthy(left) {
+			return left, nil
+		}
+	case AND:
+		if !isTruthy(left) {
+			return left, nil
+		}
+	default:
+		panic(fmt.Sprintf("unexpected logical operator: %v", expr.Operator.Type))
+	}
+
+	return i.evaluate(expr.Right)
+}
+
 // VisitGroupingExpr implements [ExprVisitor].
 func (i *Interpreter) VisitGroupingExpr(expr Grouping) (any, error) {
 	return i.evaluate(expr.Expression)
