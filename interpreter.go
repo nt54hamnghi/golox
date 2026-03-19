@@ -56,6 +56,22 @@ func (i *Interpreter) VisitBlockStmt(stmt Block) (any, error) {
 	return i.executeBlock(stmt)
 }
 
+// VisitWhileStmt implements [StmtVisitor].
+func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
+	for {
+		condition, err := i.evaluate(stmt.Condition)
+		if err != nil {
+			return nil, err
+		}
+		if !isTruthy(condition) {
+			return nil, nil
+		}
+		if _, err := i.execute(stmt.Body); err != nil {
+			return nil, err
+		}
+	}
+}
+
 // VisitVarStmt implements [StmtVisitor].
 func (i *Interpreter) VisitVarStmt(stmt Var) (any, error) {
 	var (

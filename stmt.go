@@ -9,6 +9,7 @@ type StmtVisitor interface {
 	VisitPrintStmt(stmt Print) (any, error)
 	VisitVarStmt(stmt Var) (any, error)
 	VisitIfStmt(stmt If) (any, error)
+	VisitWhileStmt(stmt While) (any, error)
 	VisitBlockStmt(stmt Block) (any, error)
 }
 
@@ -72,6 +73,22 @@ func NewIf(condition Expr, thenBranch Stmt, elseBranch Stmt) If {
 
 func (self If) Accept(visitor StmtVisitor) (any, error) {
 	return visitor.VisitIfStmt(self)
+}
+
+type While struct {
+	Condition Expr
+	Body      Stmt
+}
+
+func NewWhile(condition Expr, body Stmt) While {
+	return While{
+		Condition: condition,
+		Body:      body,
+	}
+}
+
+func (self While) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitWhileStmt(self)
 }
 
 type Block struct {

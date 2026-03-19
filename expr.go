@@ -44,13 +44,13 @@ func (self Grouping) Accept(visitor ExprVisitor) (any, error) {
 
 type Unary struct {
 	Operator Token
-	Right    Expr
+	Right Expr
 }
 
 func NewUnary(operator Token, right Expr) Unary {
 	return Unary{
 		Operator: operator,
-		Right:    right,
+		Right: right,
 	}
 }
 
@@ -73,13 +73,13 @@ func (self Variable) Accept(visitor ExprVisitor) (any, error) {
 }
 
 type Assignment struct {
-	Name  Token
+	Name Token
 	Value Expr
 }
 
 func NewAssignment(name Token, value Expr) Assignment {
 	return Assignment{
-		Name:  name,
+		Name: name,
 		Value: value,
 	}
 }
@@ -89,16 +89,16 @@ func (self Assignment) Accept(visitor ExprVisitor) (any, error) {
 }
 
 type Binary struct {
-	Left     Expr
+	Left Expr
 	Operator Token
-	Right    Expr
+	Right Expr
 }
 
 func NewBinary(left Expr, operator Token, right Expr) Binary {
 	return Binary{
-		Left:     left,
+		Left: left,
 		Operator: operator,
-		Right:    right,
+		Right: right,
 	}
 }
 
@@ -107,19 +107,20 @@ func (self Binary) Accept(visitor ExprVisitor) (any, error) {
 }
 
 type Logical struct {
-	Left     Expr
+	Left Expr
 	Operator Token
-	Right    Expr
+	Right Expr
 }
 
 func NewLogical(left Expr, operator Token, right Expr) Logical {
 	return Logical{
-		Left:     left,
+		Left: left,
 		Operator: operator,
-		Right:    right,
+		Right: right,
 	}
 }
 
 func (self Logical) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitLogicalExpr(self)
 }
+

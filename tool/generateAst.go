@@ -20,22 +20,43 @@ func main() {
 	defineAst(outputDir, "Expr", []typeDesc{
 		{"Literal", []field{{"Value", "any"}}},
 		{"Grouping", []field{{"Expression", "Expr"}}},
-		{"Unary", []field{{"Operator", "Token"}, {"Right", "Expr"}}},
+		{"Unary", []field{
+			{"Operator", "Token"},
+			{"Right", "Expr"},
+		}},
 		{"Variable", []field{{"Name", "Token"}}},
-		{"Assignment", []field{{"Name", "Token"}, {"Value", "Expr"}}},
-		{"Binary", []field{{"Left", "Expr"}, {"Operator", "Token"}, {"Right", "Expr"}}},
-		{"Logical", []field{{"Left", "Expr"}, {"Operator", "Token"}, {"Right", "Expr"}}},
+		{"Assignment", []field{
+			{"Name", "Token"},
+			{"Value", "Expr"},
+		}},
+		{"Binary", []field{
+			{"Left", "Expr"},
+			{"Operator", "Token"},
+			{"Right", "Expr"},
+		}},
+		{"Logical", []field{
+			{"Left", "Expr"},
+			{"Operator", "Token"},
+			{"Right", "Expr"},
+		}},
 	})
 
 	defineAst(outputDir, "Stmt", []typeDesc{
 		{"Expression", []field{{"Expression", "Expr"}}},
 		{"Print", []field{{"Expression", "Expr"}}},
-		{"Var", []field{{"Name", "Token"}, {"Initializer", "Expr"}}},
+		{"Var", []field{
+			{"Name", "Token"},
+			{"Initializer", "Expr"},
+		}},
 		{"If", []field{
 			{"Condition", "Expr"},
 			{"ThenBranch", "Stmt"},
-			{"ElseBranch", "Stmt"}},
-		},
+			{"ElseBranch", "Stmt"},
+		}},
+		{"While", []field{
+			{"Condition", "Expr"},
+			{"Body", "Stmt"},
+		}},
 		{"Block", []field{{"Stmts", "[]Stmt"}}},
 	})
 }

@@ -61,10 +61,11 @@ func (p *Parser) varDeclaration() (Stmt, error) {
 	return NewVar(ident, init), nil
 }
 
-// statement → exprStmt | ifStmt | printStmt | block ;
+// statement → exprStmt | ifStmt | whileStmt | printStmt | block ;
 func (p *Parser) statement() (Stmt, error) {
 	switch {
-
+	case p.match(WHILE):
+		return p.whileStatement()
 	case p.match(IF):
 		return p.ifStatement()
 	case p.match(PRINT):
@@ -74,6 +75,25 @@ func (p *Parser) statement() (Stmt, error) {
 	default:
 		return p.expressionStatement()
 	}
+}
+
+// whileStmt → "while" "(" expression ")" statement ;
+func (p *Parser) whileStatement() (Stmt, error) {
+	if _, err := p.consume(LEFT_PAREN, "Expect '(' after 'while'."); err != nil {
+		return nil, err
+	}
+	condition, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.consume(RIGHT_PAREN, "Expect ')' after condition."); err != nil {
+		return nil, err
+	}
+	body, err := p.statement()
+	if err != nil {
+		return nil, err
+	}
+	return NewWhile(condition, body), nil
 }
 
 // ifStmt → "if" "(" expression ")" statement ( "else" statement )? ;
