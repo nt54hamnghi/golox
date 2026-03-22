@@ -39,6 +39,11 @@ func main() {
 			{"Operator", "Token"},
 			{"Right", "Expr"},
 		}},
+		{"Call", []field{
+			{"Callee", "Expr"},
+			{"Paren", "Token"},
+			{"Arguments", "[]Expr"},
+		}},
 	})
 
 	defineAst(outputDir, "Stmt", []typeDesc{

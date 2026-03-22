@@ -7,11 +7,6 @@ import (
 
 type AstPrinter struct{}
 
-// VisitLogicalExpr implements [ExprVisitor].
-func (p AstPrinter) VisitLogicalExpr(expr Logical) (any, error) {
-	panic("unimplemented")
-}
-
 func (p AstPrinter) String(expr Expr) string {
 	repr, _ := expr.Accept(p)
 	if v, ok := repr.(string); ok {
@@ -19,6 +14,16 @@ func (p AstPrinter) String(expr Expr) string {
 	} else {
 		panic("AstPrinter: expected string result from expr.Accept")
 	}
+}
+
+// VisitCallExpr implements [ExprVisitor].
+func (p AstPrinter) VisitCallExpr(expr Call) (any, error) {
+	panic("unimplemented")
+}
+
+// VisitLogicalExpr implements [ExprVisitor].
+func (p AstPrinter) VisitLogicalExpr(expr Logical) (any, error) {
+	panic("unimplemented")
 }
 
 // VisitAssignmentExpr implements [ExprVisitor].

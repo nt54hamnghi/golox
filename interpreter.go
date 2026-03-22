@@ -136,6 +136,39 @@ func (i *Interpreter) VisitAssignmentExpr(expr Assignment) (any, error) {
 	return value, nil
 }
 
+// VisitCallExpr implements [ExprVisitor].
+func (i *Interpreter) VisitCallExpr(expr Call) (any, error) {
+	callee, err := i.evaluate(expr.Callee)
+	if err != nil {
+		return nil, err
+	}
+
+	args := make([]Object, 0)
+	for _, argExpr := range expr.Arguments {
+		arg, err := i.evaluate(argExpr)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg)
+	}
+
+	fun, ok := callee.(Callable)
+	if !ok {
+		return nil, RuntimeError{
+			expr.Paren,
+			"Can only call functions and classes.",
+		}
+	}
+	if len(args) != fun.Arity() {
+		return nil, RuntimeError{
+			expr.Paren,
+			fmt.Sprintf("Expected %d arguments but got %d.", fun.Arity(), len(args)),
+		}
+	}
+
+	return fun.Call(i, args), nil
+}
+
 // VisitVariableExpr implements [ExprVisitor].
 func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
 	return i.environment.Get(expr.Name)

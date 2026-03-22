@@ -2,9 +2,9 @@ package main
 
 import "fmt"
 
-// Report represents a scanner/parser error with source location context.
+// StaticError represents a scanner/parser error with source location context.
 // It implements the error interface.
-type Report struct {
+type StaticError struct {
 	line    int
 	where   string
 	message string
@@ -12,24 +12,24 @@ type Report struct {
 
 // Error formats the report as:
 // [line N] Error{where}: {message}
-func (r Report) Error() string {
+func (r StaticError) Error() string {
 	return fmt.Sprintf("[line %d] Error%s: %s", r.line, r.where, r.message)
 }
 
 // ErrorAtLine constructs a Report tied to a specific line without token context.
-func ErrorAtLine(line int, message string) Report {
-	return Report{line, "", message}
+func ErrorAtLine(line int, message string) StaticError {
+	return StaticError{line, "", message}
 }
 
 // ErrorAtToken constructs a Report tied to a token location.
 // If token is EOF, the location is reported as "at end";
 // otherwise it is reported as "at '<lexeme>'".
-func ErrorAtToken(token Token, message string) Report {
+func ErrorAtToken(token Token, message string) StaticError {
 	if token.Type == EOF {
-		return Report{token.Line, " at end", message}
+		return StaticError{token.Line, " at end", message}
 	} else {
 		at := fmt.Sprintf(" at '%s'", token.Lexeme)
-		return Report{token.Line, at, message}
+		return StaticError{token.Line, at, message}
 	}
 }
 
