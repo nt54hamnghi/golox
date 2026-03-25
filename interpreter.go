@@ -42,14 +42,14 @@ func (i *Interpreter) evaluate(expr Expr) (Object, error) {
 	return expr.Accept(i)
 }
 
-func (i *Interpreter) executeBlock(block Block) (any, error) {
-	outter := i.environment
-	i.environment = NewEnclosedEnvinronment(&outter)
+func (i *Interpreter) executeBlock(stmts []Stmt, environment Environment) (any, error) {
+	current := i.environment
+	i.environment = environment
 	defer func() {
-		i.environment = outter
+		i.environment = current
 	}()
 
-	for _, s := range block.Stmts {
+	for _, s := range stmts {
 		if _, err := i.execute(s); err != nil {
 			return nil, err
 		}
@@ -60,7 +60,9 @@ func (i *Interpreter) executeBlock(block Block) (any, error) {
 
 // VisitBlockStmt implements [StmtVisitor].
 func (i *Interpreter) VisitBlockStmt(stmt Block) (any, error) {
-	return i.executeBlock(stmt)
+	current := i.environment
+	inner := NewEnclosedEnvinronment(&current)
+	return i.executeBlock(stmt.Stmts, inner)
 }
 
 // VisitWhileStmt implements [StmtVisitor].
@@ -81,7 +83,9 @@ func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
 
 // VisitFunctionStmt implements [StmtVisitor].
 func (i *Interpreter) VisitFunctionStmt(stmt Function) (any, error) {
-	panic("unimplemented")
+	function := NewLoxFunction(stmt)
+	i.environment.Define(stmt.Name.Lexeme, function)
+	return nil, nil
 }
 
 // VisitVarStmt implements [StmtVisitor].

@@ -21,9 +21,21 @@ func parseProgramForTest(t *testing.T, source string) []Stmt {
 func interpretProgramForTest(t *testing.T, source string) (Interpreter, error) {
 	t.Helper()
 
+	globals = NewEnvironment()
 	interpreter := NewInterpreter()
 	err := interpreter.Interpret(parseProgramForTest(t, source))
 	return interpreter, err
+}
+
+func assertGlobalValues(t *testing.T, got map[string]Object, want map[string]Object) {
+	t.Helper()
+	r := require.New(t)
+
+	r.Contains(got, "clock")
+	for name, value := range want {
+		r.Equal(value, got[name])
+	}
+	r.Len(got, len(want)+1)
 }
 
 func TestInterpreterExpressionStatementsSuccess(t *testing.T) {
@@ -38,7 +50,7 @@ false == false;
 	interpreter, err := interpretProgramForTest(t, source)
 
 	r.NoError(err)
-	r.Empty(interpreter.environment.values)
+	assertGlobalValues(t, interpreter.environment.values, map[string]Object{})
 }
 
 func TestInterpreterVariableDeclarationsSuccess(t *testing.T) {
@@ -88,7 +100,7 @@ var quz = hello;
 			interpreter, err := interpretProgramForTest(t, tt.source)
 
 			r.NoError(err)
-			r.Equal(tt.want, interpreter.environment.values)
+			assertGlobalValues(t, interpreter.environment.values, tt.want)
 		})
 	}
 }
@@ -182,7 +194,7 @@ var bar;
 			interpreter, err := interpretProgramForTest(t, tt.source)
 
 			r.NoError(err)
-			r.Equal(tt.want, interpreter.environment.values)
+			assertGlobalValues(t, interpreter.environment.values, tt.want)
 		})
 	}
 }
@@ -231,7 +243,7 @@ var quz = hello;
 			interpreter, err := interpretProgramForTest(t, tt.source)
 
 			r.NoError(err)
-			r.Equal(tt.want, interpreter.environment.values)
+			assertGlobalValues(t, interpreter.environment.values, tt.want)
 		})
 	}
 }
@@ -301,7 +313,7 @@ foo = bar = baz = foo * 2;
 			interpreter, err := interpretProgramForTest(t, tt.source)
 
 			r.NoError(err)
-			r.Equal(tt.want, interpreter.environment.values)
+			assertGlobalValues(t, interpreter.environment.values, tt.want)
 		})
 	}
 }
@@ -374,7 +386,7 @@ var quz = "outer quz";
 			interpreter, err := interpretProgramForTest(t, tt.source)
 
 			r.NoError(err)
-			r.Equal(tt.wantGlobals, interpreter.environment.values)
+			assertGlobalValues(t, interpreter.environment.values, tt.wantGlobals)
 			for _, name := range tt.missingGlobals {
 				_, exists := interpreter.environment.values[name]
 				r.False(exists, "expected %q to remain local to a block", name)
