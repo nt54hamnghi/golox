@@ -1,4 +1,9 @@
-// This program would give a compile error
-// because the variable declaration is not
-// inside a block
-for (;;) var foo;
+var start = clock();
+for (var i = 0; i < 1000000; i = i + 1) {
+    print i;
+}
+var elapsed = clock() - start;
+
+print "";
+print "Took: ";
+print elapsed;

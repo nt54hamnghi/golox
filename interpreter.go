@@ -6,13 +6,20 @@ import (
 
 type Object any
 
+// The global environment for the interpreter.
+var globals = NewEnvironment()
+
 type Interpreter struct {
+	// The currently entered environment.
 	environment Environment
 }
 
 func NewInterpreter() Interpreter {
+	globals.Define("clock", NativeFun(Clock))
 	return Interpreter{
-		environment: NewEnvironment(),
+		// the interpreter starts with the global environment
+		// as its current environment.
+		environment: globals,
 	}
 }
 
