@@ -79,6 +79,11 @@ func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
 	}
 }
 
+// VisitFunctionStmt implements [StmtVisitor].
+func (i *Interpreter) VisitFunctionStmt(stmt Function) (any, error) {
+	panic("unimplemented")
+}
+
 // VisitVarStmt implements [StmtVisitor].
 func (i *Interpreter) VisitVarStmt(stmt Var) (any, error) {
 	var (

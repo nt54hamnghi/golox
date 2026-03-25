@@ -1,7 +1,5 @@
 var start = clock();
-for (var i = 0; i < 1000000; i = i + 1) {
-    print i;
-}
+for (var i = 0; i < 1000000; i = i + 1) print i;
 var elapsed = clock() - start;
 
 print "";

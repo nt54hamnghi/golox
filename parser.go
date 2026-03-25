@@ -32,12 +32,63 @@ func (p Parser) Parse() []Stmt {
 	return stmts
 }
 
-// declaration → varDecl | statement ;
+// declaration → funDecl | varDecl | statement ;
 func (p *Parser) declaration() (Stmt, error) {
+	if p.match(FUN) {
+		return p.function("function")
+	}
 	if p.match(VAR) {
 		return p.varDeclaration()
 	}
 	return p.statement()
+}
+
+func (p *Parser) function(kind string) (Stmt, error) {
+	name, err := p.consume(IDENTIFIER, fmt.Sprintf("Expect %s name.", kind))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = p.consume(LEFT_PAREN, fmt.Sprintf("Expect '(' after %s name.", kind))
+	if err != nil {
+		return nil, err
+	}
+
+	params := make([]Token, 0)
+	if !p.check(RIGHT_PAREN) {
+		for {
+			if len(params) >= 225 {
+				err = ErrorAtToken(p.peek(), "Can't have more than 255 parameters.")
+				fmt.Fprint(os.Stderr, err.Error())
+			}
+			param, err := p.consume(IDENTIFIER, "Expect parameter name.")
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, param)
+			if !p.match(COMMA) {
+				break
+			}
+		}
+	}
+
+	_, err = p.consume(RIGHT_PAREN, "Expect ')' after parameters.")
+	if err != nil {
+		return nil, err
+	}
+
+	// `block` assumes that '{' has already be matched.
+	// Also, consuming '{' here lets us report a more precise error message.
+	_, err = p.consume(LEFT_BRACE, fmt.Sprintf("Expect '{' before %s body.", kind))
+	if err != nil {
+		return nil, err
+	}
+	body, err := p.block()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewFunction(name, params, body), nil
 }
 
 // varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
@@ -73,7 +124,11 @@ func (p *Parser) statement() (Stmt, error) {
 	case p.match(PRINT):
 		return p.printStatement()
 	case p.match(LEFT_BRACE):
-		return p.block()
+		stmts, err := p.block()
+		if err != nil {
+			return nil, err
+		}
+		return NewBlock(stmts), nil
 	default:
 		return p.expressionStatement()
 	}
@@ -197,7 +252,7 @@ func (p *Parser) ifStatement() (Stmt, error) {
 }
 
 // block → "{" declaration* "}" ;
-func (p *Parser) block() (Stmt, error) {
+func (p *Parser) block() ([]Stmt, error) {
 	stmts := make([]Stmt, 0)
 
 	for !p.check(RIGHT_BRACE) && !p.isAtEnd() {
@@ -212,7 +267,7 @@ func (p *Parser) block() (Stmt, error) {
 		return nil, err
 	}
 
-	return NewBlock(stmts), nil
+	return stmts, nil
 }
 
 // printStmt → "print" expression ";" ;

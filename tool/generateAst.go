@@ -53,6 +53,11 @@ func main() {
 			{"Name", "Token"},
 			{"Initializer", "Expr"},
 		}},
+		{"Function", []field{
+			{"Name", "Token"},
+			{"Params", "[]Token"},
+			{"Body", "[]Stmt"},
+		}},
 		{"If", []field{
 			{"Condition", "Expr"},
 			{"ThenBranch", "Stmt"},
