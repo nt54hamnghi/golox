@@ -11,6 +11,7 @@ type StmtVisitor interface {
 	VisitFunctionStmt(stmt Function) (any, error)
 	VisitIfStmt(stmt If) (any, error)
 	VisitWhileStmt(stmt While) (any, error)
+	VisitReturnStmt(stmt Return) (any, error)
 	VisitBlockStmt(stmt Block) (any, error)
 }
 
@@ -108,6 +109,22 @@ func NewWhile(condition Expr, body Stmt) While {
 
 func (self While) Accept(visitor StmtVisitor) (any, error) {
 	return visitor.VisitWhileStmt(self)
+}
+
+type Return struct {
+	Keyword Token
+	Value   Expr
+}
+
+func NewReturn(keyword Token, value Expr) Return {
+	return Return{
+		Keyword: keyword,
+		Value:   value,
+	}
+}
+
+func (self Return) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitReturnStmt(self)
 }
 
 type Block struct {

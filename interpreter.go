@@ -88,6 +88,24 @@ func (i *Interpreter) VisitFunctionStmt(stmt Function) (any, error) {
 	return nil, nil
 }
 
+// VisitReturnStmt implements [StmtVisitor].
+func (i *Interpreter) VisitReturnStmt(stmt Return) (any, error) {
+	var (
+		value Object
+		err   error
+	)
+	if stmt.Value != nil {
+		value, err = i.evaluate(stmt.Value)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
+	// use ReturnIt error to unwind the call stack
+	return nil, ReturnThis{value}
+}
+
 // VisitVarStmt implements [StmtVisitor].
 func (i *Interpreter) VisitVarStmt(stmt Var) (any, error) {
 	var (

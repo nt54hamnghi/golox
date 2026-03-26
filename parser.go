@@ -112,9 +112,11 @@ func (p *Parser) varDeclaration() (Stmt, error) {
 	return NewVar(ident, init), nil
 }
 
-// statement → exprStmt | ifStmt | whileStmt | printStmt | block ;
+// statement → exprStmt | ifStmt | printStmt | returnStmt | whileStmt | forStmt | block ;
 func (p *Parser) statement() (Stmt, error) {
 	switch {
+	case p.match(RETURN):
+		return p.returnStatement()
 	case p.match(FOR):
 		return p.forStatement()
 	case p.match(WHILE):
@@ -132,6 +134,26 @@ func (p *Parser) statement() (Stmt, error) {
 	default:
 		return p.expressionStatement()
 	}
+}
+
+// returnStmt → "return" expression? ";" ;
+func (p *Parser) returnStatement() (Stmt, error) {
+	keyword := p.previous()
+	var (
+		value Expr
+		err   error
+	)
+	if !p.check(SEMICOLON) {
+		value, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, err = p.consume(SEMICOLON, "Expect ';' after return value.")
+	if err != nil {
+		return nil, nil
+	}
+	return NewReturn(keyword, value), nil
 }
 
 // forStmt → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";"  expression? ")" statement ;

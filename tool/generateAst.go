@@ -67,6 +67,10 @@ func main() {
 			{"Condition", "Expr"},
 			{"Body", "Stmt"},
 		}},
+		{"Return", []field{
+			{"Keyword", "Token"},
+			{"Value", "Expr"},
+		}},
 		{"Block", []field{{"Stmts", "[]Stmt"}}},
 	})
 }

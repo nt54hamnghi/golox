@@ -7,9 +7,12 @@ declaration    → funDecl
 statement      → exprStmt
                | ifStmt
                | printStmt
+               | returnStmt
                | whileStmt
                | forStmt
                | block ;
+
+returnStmt     → "return" expression? ";" ;
 
 forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
                  expression? ";"

@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"os"
+)
 
 type LoxFunction struct {
 	declaration Function
@@ -18,8 +22,14 @@ func (lf LoxFunction) Call(interpreter *Interpreter, args []Object) Object {
 		environment.Define(p.Lexeme, a)
 	}
 
-	interpreter.executeBlock(lf.declaration.Body, environment)
-	return nil
+	var returnThis ReturnThis
+	_, err := interpreter.executeBlock(lf.declaration.Body, environment)
+	if errors.As(err, &returnThis) {
+		return returnThis.Value
+	} else {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return nil
+	}
 }
 
 func (lf LoxFunction) Arity() int {
