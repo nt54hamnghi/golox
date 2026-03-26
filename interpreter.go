@@ -83,7 +83,7 @@ func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
 
 // VisitFunctionStmt implements [StmtVisitor].
 func (i *Interpreter) VisitFunctionStmt(stmt Function) (any, error) {
-	function := NewLoxFunction(stmt)
+	function := NewLoxFunction(stmt, i.environment)
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil, nil
 }
