@@ -14,6 +14,10 @@ type Interpreter struct {
 	environment Environment
 }
 
+func (i *Interpreter) resolve(expr Expr, depth int) {
+	panic("unimplemented")
+}
+
 func NewInterpreter() Interpreter {
 	globals.Define("clock", NativeFun(Clock))
 	return Interpreter{
