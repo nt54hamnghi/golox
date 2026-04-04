@@ -51,6 +51,11 @@ func (e *Environment) Assign(name Token, value Object) error {
 	}
 }
 
+func (e Environment) AssignAt(distance int, name Token, value Object) error {
+	e.ancestor(distance).values[name.Lexeme] = value
+	return nil
+}
+
 // Get resolves a variable by name at evaluation time in lexical scope order.
 // It starts in the current (innermost) environment, then walks outward through enclosing scopes.
 // If no scope defines the variable, it returns a runtime error.
@@ -77,4 +82,16 @@ func (e Environment) Get(name Token) (Object, error) {
 		name,
 		fmt.Sprintf("Undefined variable '%s'.", name.Lexeme),
 	}
+}
+
+func (e Environment) GetAt(distance int, name Token) (Object, error) {
+	return e.ancestor(distance).values[name.Lexeme], nil
+}
+
+func (e Environment) ancestor(distance int) Environment {
+	curr := e
+	for i := 0; i < distance; i++ {
+		curr = *curr.enclosing
+	}
+	return curr
 }

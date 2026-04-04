@@ -22,7 +22,9 @@ func main() {
 		fmt.Println("Usage: glox [script]")
 		os.Exit(64)
 	} else if len(args) == 1 {
-		runFile(args[0])
+		if err := runFile(args[0]); err != nil {
+			panic(err)
+		}
 	} else {
 		runPrompt()
 	}
@@ -82,6 +84,11 @@ func run(src string) error {
 
 	parser := NewParser(tokens)
 	prog := parser.Parse()
+
+	resolver := NewResolver(&interpreter)
+	if _, err := resolver.Resolve(prog); err != nil {
+		return err
+	}
 
 	err = interpreter.Interpret(prog)
 	if err != nil {

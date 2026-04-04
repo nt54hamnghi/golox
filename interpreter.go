@@ -12,18 +12,20 @@ var globals = NewEnvironment()
 type Interpreter struct {
 	// The currently entered environment.
 	environment Environment
+	// Maps node identity to its resolved location in the environment stack.
+	locals map[uint64]int
 }
 
 func (i *Interpreter) resolve(expr Expr, depth int) {
-	panic("unimplemented")
+	i.locals[expr.Id()] = depth
 }
 
 func NewInterpreter() Interpreter {
 	globals.Define("clock", NativeFun(Clock))
 	return Interpreter{
-		// the interpreter starts with the global environment
-		// as its current environment.
+		// the interpreter starts with the global environment as its current environment.
 		environment: globals,
+		locals:      make(map[uint64]int),
 	}
 }
 
@@ -165,12 +167,22 @@ func (i *Interpreter) VisitPrintStmt(stmt Print) (any, error) {
 
 // VisitAssignmentExpr implements [ExprVisitor].
 func (i *Interpreter) VisitAssignmentExpr(expr Assignment) (any, error) {
+
 	value, err := i.evaluate(expr.Value)
 	if err != nil {
 		return nil, err
 	}
 
-	i.environment.Assign(expr.Name, value)
+	if distance, ok := i.locals[expr.Id()]; ok {
+		if err := i.environment.AssignAt(distance, expr.Name, value); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := globals.Assign(expr.Name, value); err != nil {
+			return nil, err
+		}
+	}
+
 	return value, nil
 }
 
@@ -209,7 +221,18 @@ func (i *Interpreter) VisitCallExpr(expr Call) (any, error) {
 
 // VisitVariableExpr implements [ExprVisitor].
 func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
-	return i.environment.Get(expr.Name)
+	return i.lookUpVariable(expr.Name, expr)
+}
+
+// lookUpVariable finds the resolved distance in the locals map.
+// If we don’t find a distance, it must be global, so we look it up
+// directly in the global environment.
+func (i Interpreter) lookUpVariable(name Token, expr Variable) (any, error) {
+	if distance, ok := i.locals[expr.Id()]; ok {
+		return i.environment.GetAt(distance, name)
+	} else {
+		return globals.Get(name)
+	}
 }
 
 // VisitLiteralExpr implements [ExprVisitor].

@@ -30,7 +30,7 @@ func (r *Resolver) resolveStmt(stmt Stmt) (any, error) {
 	return stmt.Accept(r)
 }
 
-func (r *Resolver) resolve(stmts []Stmt) (any, error) {
+func (r *Resolver) Resolve(stmts []Stmt) (any, error) {
 	for _, s := range stmts {
 		if _, err := s.Accept(r); err != nil {
 			return nil, err
@@ -53,7 +53,7 @@ func (r *Resolver) endScope() {
 // VisitBlockStmt implements [StmtVisitor].
 func (r *Resolver) VisitBlockStmt(stmt Block) (any, error) {
 	r.beginScope()
-	if _, err := r.resolve(stmt.Stmts); err != nil {
+	if _, err := r.Resolve(stmt.Stmts); err != nil {
 		return nil, err
 	}
 	r.endScope()
@@ -107,7 +107,7 @@ func (r *Resolver) resolveFunction(fun Function) (any, error) {
 		r.declare(param)
 		r.define(param)
 	}
-	if _, err := r.resolve(fun.Body); err != nil {
+	if _, err := r.Resolve(fun.Body); err != nil {
 		return nil, err
 	}
 	r.endScope()
