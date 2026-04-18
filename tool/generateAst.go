@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"iter"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,7 @@ func main() {
 
 	outputDir := args[0]
 
-	defineAst(outputDir, "Expr", []typeDesc{
+	err := defineAst(outputDir, "Expr", []typeDesc{
 		{"Literal", []field{{"Value", "any"}}},
 		{"Grouping", []field{{"Expression", "Expr"}}},
 		{"Unary", []field{
@@ -45,8 +46,11 @@ func main() {
 			{"Arguments", "[]Expr"},
 		}},
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	defineAst(outputDir, "Stmt", []typeDesc{
+	err = defineAst(outputDir, "Stmt", []typeDesc{
 		{"Expression", []field{{"Expression", "Expr"}}},
 		{"Print", []field{{"Expression", "Expr"}}},
 		{"Var", []field{
@@ -73,6 +77,13 @@ func main() {
 		}},
 		{"Block", []field{{"Stmts", "[]Stmt"}}},
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err = defineNodeIdGo(outputDir); err != nil {
+		log.Fatal(err)
+	}
 }
 
 type typeDesc struct {
@@ -95,6 +106,23 @@ type field struct {
 	typ  string
 }
 
+func defineNodeIdGo(outputDir string) error {
+	b := strings.Builder{}
+
+	fmt.Fprintln(&b, "package main")
+	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "import \"sync/atomic\"")
+	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "var nodeID atomic.Uint64")
+
+	path := filepath.Join(outputDir, strings.ToLower("nodeId")+".go")
+	if err := os.WriteFile(path, []byte(b.String()), 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func defineAst(outputDir string, base string, types []typeDesc) error {
 	b := strings.Builder{}
 
@@ -102,6 +130,7 @@ func defineAst(outputDir string, base string, types []typeDesc) error {
 	fmt.Fprintln(&b)
 	fmt.Fprintf(&b, "type %s interface {\n", base)
 	fmt.Fprintf(&b, "\tAccept(visitor %sVisitor) (any, error)\n", base)
+	fmt.Fprint(&b, "\tId() uint64\n")
 	fmt.Fprintln(&b, "}")
 	fmt.Fprintln(&b)
 
@@ -138,15 +167,20 @@ func defineType(b *strings.Builder, base string, t typeDesc) {
 		fmt.Fprintf(b, "\t%s %s\n", fname, ftype)
 
 	}
+	fmt.Fprintf(b, "\tIdentity %s\n", "uint64")
 	fmt.Fprintln(b, "}")
 
 	// constructor
 	fmt.Fprintln(b)
 	defineTypeConstructor(b, t)
 
-	// implement Expr interface
+	// implement interface
 	fmt.Fprintf(b, "func (self %s) Accept(visitor %sVisitor) (any, error) {\n", t.name, base)
 	fmt.Fprintf(b, "\treturn visitor.Visit%s%s(self)\n", t.name, base)
+	fmt.Fprintln(b, "}")
+
+	fmt.Fprintf(b, "func (self %s) Id() uint64 {\n", t.name)
+	fmt.Fprintf(b, "\treturn self.Identity\n")
 	fmt.Fprintln(b, "}")
 
 	fmt.Fprintln(b)
@@ -162,13 +196,15 @@ func defineTypeConstructor(b *strings.Builder, t typeDesc) {
 	}
 
 	fmt.Fprintf(b, ") %s {\n", t.name)
-	fmt.Fprintf(b, "\treturn %s{\n", t.name)
+	fmt.Fprintf(b, "\tnode := %s{\n", t.name)
 
 	for _, f := range t.fieldList {
 		fmt.Fprintf(b, "\t\t%s: %s,\n", f.name, strings.ToLower(f.name))
 	}
 
 	fmt.Fprintln(b, "\t}")
+	fmt.Fprintln(b, "\tnode.Identity = nodeID.Add(1)")
+	fmt.Fprintln(b, "\treturn node")
 	fmt.Fprintln(b, "}")
 	fmt.Fprintln(b)
 }
