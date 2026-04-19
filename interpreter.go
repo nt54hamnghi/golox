@@ -1,8 +1,6 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
 type Object any
 
@@ -12,8 +10,9 @@ var globals = NewEnvironment()
 type Interpreter struct {
 	// The currently entered environment.
 	environment Environment
-	// Maps node identity to its resolved location in the environment stack.
-	locals map[uint64]int
+	// A map of variable usages (via node identity) to
+	// their resolved location in the environment stack.
+	locals map[NodeID]int
 }
 
 func (i *Interpreter) resolve(expr Expr, depth int) {
@@ -25,7 +24,7 @@ func NewInterpreter() Interpreter {
 	return Interpreter{
 		// the interpreter starts with the global environment as its current environment.
 		environment: globals,
-		locals:      make(map[uint64]int),
+		locals:      make(map[NodeID]int),
 	}
 }
 

@@ -28,7 +28,6 @@ func main() {
 	} else {
 		runPrompt()
 	}
-
 }
 
 var hadError bool

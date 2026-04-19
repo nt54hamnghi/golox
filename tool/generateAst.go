@@ -111,11 +111,41 @@ func defineNodeIdGo(outputDir string) error {
 
 	fmt.Fprintln(&b, "package main")
 	fmt.Fprintln(&b)
-	fmt.Fprintln(&b, "import \"sync/atomic\"")
+	fmt.Fprintln(&b, "import (")
+	fmt.Fprintln(&b, "\t\"bytes\"")
+	fmt.Fprintln(&b, "\t\"encoding/gob\"")
+	fmt.Fprintln(&b, "\t\"hash/maphash\"")
+	fmt.Fprintln(&b, "\t\"sync/atomic\"")
+	fmt.Fprintln(&b, ")")
 	fmt.Fprintln(&b)
-	fmt.Fprintln(&b, "var nodeID atomic.Uint64")
+	fmt.Fprintln(&b, "var root atomic.Uint64")
+	fmt.Fprintln(&b, "var seed maphash.Seed = maphash.MakeSeed()")
+	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "type NodeID struct {")
+	fmt.Fprintln(&b, "\tid     uint64")
+	fmt.Fprintln(&b, "\tdigest uint64")
+	fmt.Fprintln(&b, "}")
+	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "func NewNodeIDFrom(v any) NodeID {")
+	fmt.Fprintln(&b, "\tid := root.Add(1)")
+	fmt.Fprintln(&b, "\treturn NodeID{id: id, digest: nodeDigest(id, v)}")
+	fmt.Fprintln(&b, "}")
+	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "func nodeDigest(id uint64, v any) uint64 {")
+	fmt.Fprintln(&b, "\tvar buf bytes.Buffer")
+	fmt.Fprintln(&b, "\tif err := gob.NewEncoder(&buf).Encode(v); err != nil {")
+	fmt.Fprintln(&b, "\t\tpanic(err)")
+	fmt.Fprintln(&b, "\t}")
+	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "\tvar h maphash.Hash")
+	fmt.Fprintln(&b, "\th.SetSeed(seed)")
+	fmt.Fprintln(&b, "\tmaphash.WriteComparable(&h, id)")
+	fmt.Fprintln(&b, "\tmaphash.WriteComparable(&h, string(buf.Bytes()))")
+	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "\treturn h.Sum64()")
+	fmt.Fprintln(&b, "}")
 
-	path := filepath.Join(outputDir, strings.ToLower("nodeId")+".go")
+	path := filepath.Join(outputDir, strings.ToLower("nodeid")+".go")
 	if err := os.WriteFile(path, []byte(b.String()), 0644); err != nil {
 		return err
 	}
@@ -128,11 +158,17 @@ func defineAst(outputDir string, base string, types []typeDesc) error {
 
 	fmt.Fprintln(&b, "package main")
 	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "import (")
+	fmt.Fprintln(&b, "\t\"encoding/gob\"")
+	fmt.Fprintln(&b, "\t\"fmt\"")
+	fmt.Fprintln(&b, ")")
+	fmt.Fprintln(&b)
 	fmt.Fprintf(&b, "type %s interface {\n", base)
 	fmt.Fprintf(&b, "\tAccept(visitor %sVisitor) (any, error)\n", base)
-	fmt.Fprint(&b, "\tId() uint64\n")
+	fmt.Fprint(&b, "\tId() NodeID\n")
 	fmt.Fprintln(&b, "}")
 	fmt.Fprintln(&b)
+	defineGobRegistration(&b, types)
 
 	defineVisitor(&b, base, types)
 
@@ -146,6 +182,15 @@ func defineAst(outputDir string, base string, types []typeDesc) error {
 	}
 
 	return nil
+}
+
+func defineGobRegistration(b *strings.Builder, types []typeDesc) {
+	fmt.Fprintln(b, "func init() {")
+	for _, t := range types {
+		fmt.Fprintf(b, "\tgob.Register(%s{})\n", t.name)
+	}
+	fmt.Fprintln(b, "}")
+	fmt.Fprintln(b)
 }
 
 func defineVisitor(b *strings.Builder, base string, types []typeDesc) {
@@ -167,7 +212,7 @@ func defineType(b *strings.Builder, base string, t typeDesc) {
 		fmt.Fprintf(b, "\t%s %s\n", fname, ftype)
 
 	}
-	fmt.Fprintf(b, "\tIdentity %s\n", "uint64")
+	fmt.Fprintf(b, "\tid %s\n", "NodeID")
 	fmt.Fprintln(b, "}")
 
 	// constructor
@@ -179,8 +224,14 @@ func defineType(b *strings.Builder, base string, t typeDesc) {
 	fmt.Fprintf(b, "\treturn visitor.Visit%s%s(self)\n", t.name, base)
 	fmt.Fprintln(b, "}")
 
-	fmt.Fprintf(b, "func (self %s) Id() uint64 {\n", t.name)
-	fmt.Fprintf(b, "\treturn self.Identity\n")
+	fmt.Fprintln(b)
+	fmt.Fprintf(b, "func (self %s) Id() NodeID {\n", t.name)
+	makeTempDataWithSource(b, t, "self")
+	fmt.Fprintln(b, "\tif nodeDigest(self.id.id, tmp) != self.id.digest {")
+	fmt.Fprintf(b, "\t\tpanic(fmt.Sprintf(\"node id hash mismatch, a copied value was modified: %%#v\", self))\n")
+
+	fmt.Fprintln(b, "\t}")
+	fmt.Fprintf(b, "\treturn self.id\n")
 	fmt.Fprintln(b, "}")
 
 	fmt.Fprintln(b)
@@ -203,8 +254,32 @@ func defineTypeConstructor(b *strings.Builder, t typeDesc) {
 	}
 
 	fmt.Fprintln(b, "\t}")
-	fmt.Fprintln(b, "\tnode.Identity = nodeID.Add(1)")
+	fmt.Fprintln(b)
+	makeTempData(b, t)
+	fmt.Fprintln(b, "\tnode.id = NewNodeIDFrom(tmp)")
 	fmt.Fprintln(b, "\treturn node")
 	fmt.Fprintln(b, "}")
 	fmt.Fprintln(b)
+}
+
+func makeTempData(b *strings.Builder, t typeDesc) {
+	makeTempDataWithSource(b, t, "node")
+}
+
+func makeTempDataWithSource(b *strings.Builder, t typeDesc, source string) {
+	fmt.Fprint(b, "\ttmp := struct{ ")
+	for i, f := range t.fieldList {
+		if i > 0 {
+			fmt.Fprint(b, " ")
+		}
+		fmt.Fprintf(b, "%s %s;", f.name, f.typ)
+	}
+	fmt.Fprint(b, " }{")
+	for i, f := range t.fieldList {
+		if i > 0 {
+			fmt.Fprint(b, ", ")
+		}
+		fmt.Fprintf(b, "%s: %s.%s", f.name, source, f.name)
+	}
+	fmt.Fprintln(b, "}")
 }
