@@ -4,6 +4,17 @@ import (
 	"github.com/nt54hamnghi/golox/stack"
 )
 
+type funType int
+
+const (
+	FUNCTION funType = iota
+	NONE
+)
+
+func (f funType) String() string {
+	return [...]string{"function", "none"}[f]
+}
+
 // scope is a map of variable names to boolean values.
 // The boolean value indicates whether the initializer
 // of a variable has been resolved.
@@ -14,13 +25,15 @@ type Resolver struct {
 	// A stack of scopes, representing nesting lexical scopes.
 	// The innermost scope is at the top of the stack, and the
 	// outermost scope is at the bottom.
-	scopes stack.Stack[scope]
+	scopes         stack.Stack[scope]
+	currentFunType funType
 }
 
 func NewResolver(interpreter *Interpreter) Resolver {
 	return Resolver{
-		interpreter: interpreter,
-		scopes:      stack.NewStack[scope](),
+		interpreter:    interpreter,
+		scopes:         stack.NewStack[scope](),
+		currentFunType: NONE,
 	}
 }
 
@@ -107,13 +120,17 @@ func (r *Resolver) VisitFunctionStmt(stmt Function) (any, error) {
 		return nil, err
 	}
 	r.define(stmt.Name)
-	if _, err := r.resolveFunction(stmt); err != nil {
+	if _, err := r.resolveFunction(stmt, FUNCTION); err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
-func (r *Resolver) resolveFunction(fun Function) (any, error) {
+func (r *Resolver) resolveFunction(fun Function, funT funType) (any, error) {
+	enclosingFuncType := r.currentFunType
+	r.currentFunType = funT
+	defer func() { r.currentFunType = enclosingFuncType }()
+
 	r.beginScope()
 	for _, param := range fun.Params {
 		if err := r.declare(param); err != nil {
@@ -151,6 +168,9 @@ func (r *Resolver) VisitPrintStmt(stmt Print) (any, error) {
 
 // VisitReturnStmt implements [StmtVisitor].
 func (r *Resolver) VisitReturnStmt(stmt Return) (any, error) {
+	if r.currentFunType == NONE {
+		return nil, ErrorAtToken(stmt.Keyword, "Can't return from top-level code.")
+	}
 	if stmt.Value != nil {
 		return r.resolveExpr(stmt.Value)
 	}
