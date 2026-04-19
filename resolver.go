@@ -1,6 +1,8 @@
 package main
 
-import "github.com/nt54hamnghi/golox/stack"
+import (
+	"github.com/nt54hamnghi/golox/stack"
+)
 
 // scope is a map of variable names to boolean values.
 // The boolean value indicates whether the initializer
@@ -62,7 +64,9 @@ func (r *Resolver) VisitBlockStmt(stmt Block) (any, error) {
 
 // VisitVarStmt implements [StmtVisitor].
 func (r *Resolver) VisitVarStmt(stmt Var) (any, error) {
-	r.declare(stmt.Name)
+	if err := r.declare(stmt.Name); err != nil {
+		return nil, err
+	}
 	if stmt.Initializer != nil {
 		if _, err := r.resolveExpr(stmt.Initializer); err != nil {
 			return nil, err
@@ -72,12 +76,16 @@ func (r *Resolver) VisitVarStmt(stmt Var) (any, error) {
 	return nil, nil
 }
 
-func (r *Resolver) declare(name Token) {
+func (r *Resolver) declare(name Token) error {
 	current, exist := r.scopes.Peek()
 	if !exist {
-		return
+		return nil
+	}
+	if _, ok := current[name.Lexeme]; ok {
+		return ErrorAtToken(name, "Already a variable with this name in this scope.")
 	}
 	current[name.Lexeme] = false
+	return nil
 }
 
 func (r *Resolver) define(name Token) {
@@ -95,16 +103,22 @@ func (r *Resolver) VisitExpressionStmt(stmt Expression) (any, error) {
 
 // VisitFunctionStmt implements [StmtVisitor].
 func (r *Resolver) VisitFunctionStmt(stmt Function) (any, error) {
-	r.declare(stmt.Name)
+	if err := r.declare(stmt.Name); err != nil {
+		return nil, err
+	}
 	r.define(stmt.Name)
-	r.resolveFunction(stmt)
+	if _, err := r.resolveFunction(stmt); err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
 func (r *Resolver) resolveFunction(fun Function) (any, error) {
 	r.beginScope()
 	for _, param := range fun.Params {
-		r.declare(param)
+		if err := r.declare(param); err != nil {
+			return nil, err
+		}
 		r.define(param)
 	}
 	if _, err := r.Resolve(fun.Body); err != nil {
