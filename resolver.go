@@ -75,6 +75,13 @@ func (r *Resolver) VisitBlockStmt(stmt Block) (any, error) {
 	return nil, nil
 }
 
+// VisitClassStmt implements [StmtVisitor].
+func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
+	r.declare(stmt.Name)
+	r.define(stmt.Name)
+	return nil, nil
+}
+
 // VisitVarStmt implements [StmtVisitor].
 func (r *Resolver) VisitVarStmt(stmt Var) (any, error) {
 	if err := r.declare(stmt.Name); err != nil {

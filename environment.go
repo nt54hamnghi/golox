@@ -24,7 +24,7 @@ func NewEnclosedEnvinronment(enclosing *Environment) Environment {
 	}
 }
 
-// Define adds or updates a variable in the environment.
+// Define adds a variable in the environment.
 // It does not check if the name already exists, so defining the same name redefines it.
 // Defining a new variable always happens in the most inner scope, which is the current one.
 func (e *Environment) Define(name string, value Object) {

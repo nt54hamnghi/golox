@@ -70,6 +70,14 @@ func (i *Interpreter) VisitBlockStmt(stmt Block) (any, error) {
 	return i.executeBlock(stmt.Stmts, inner)
 }
 
+// VisitClassStmt implements [StmtVisitor].
+func (i *Interpreter) VisitClassStmt(stmt Class) (any, error) {
+	i.environment.Define(stmt.Name.Lexeme, nil)
+	klass := NewLoxClass(stmt.Name.Lexeme)
+	i.environment.Assign(stmt.Name, klass)
+	return nil, nil
+}
+
 // VisitWhileStmt implements [StmtVisitor].
 func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
 	for {

@@ -32,15 +32,48 @@ func (p Parser) Parse() []Stmt {
 	return stmts
 }
 
-// declaration → funDecl | varDecl | statement ;
+// declaration → classDecl | funDecl | varDecl | statement ;
 func (p *Parser) declaration() (Stmt, error) {
 	if p.match(FUN) {
 		return p.function("function")
+	}
+	if p.match(CLASS) {
+		return p.classDeclaration()
 	}
 	if p.match(VAR) {
 		return p.varDeclaration()
 	}
 	return p.statement()
+}
+
+// classDecl → "class" IDENTIFIER "{" function* "}";
+func (p *Parser) classDeclaration() (Stmt, error) {
+	name, err := p.consume(IDENTIFIER, "Expect class name.")
+	if err != nil {
+		return nil, err
+	}
+	if _, err = p.consume(LEFT_BRACE, "Expect '{' before class body."); err != nil {
+		return nil, err
+	}
+
+	methods := make([]Function, 0)
+	for !p.check(RIGHT_BRACE) && !p.isAtEnd() {
+		stmt, err := p.function("method")
+		if err != nil {
+			return nil, err
+		}
+		method, ok := stmt.(Function)
+		if !ok {
+			panic("unexpected stmt type, while parsing class methods")
+		}
+		methods = append(methods, method)
+	}
+
+	if _, err = p.consume(RIGHT_BRACE, "Expect '}' after class body."); err != nil {
+		return nil, err
+	}
+
+	return NewClass(name, methods), nil
 }
 
 func (p *Parser) function(kind string) (Stmt, error) {
@@ -498,13 +531,13 @@ func (p *Parser) finishCall(callee Expr) (Expr, error) {
 	args := make([]Expr, 0)
 	if !p.check(RIGHT_PAREN) {
 		for {
+			if len(args) >= 255 {
+				err := ErrorAtToken(p.peek(), "Can't have more than 255 arguments.")
+				fmt.Fprint(os.Stderr, err.Error())
+			}
 			expr, err := p.expression()
 			if err != nil {
 				return nil, err
-			}
-			if len(args) >= 255 {
-				err = ErrorAtToken(p.peek(), "Can't have more than 255 arguments.")
-				fmt.Fprint(os.Stderr, err.Error())
 			}
 			args = append(args, expr)
 			if !p.match(COMMA) {

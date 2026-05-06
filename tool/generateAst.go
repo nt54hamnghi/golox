@@ -57,6 +57,10 @@ func main() {
 			{"Name", "Token"},
 			{"Initializer", "Expr"},
 		}},
+		{"Class", []field{
+			{"Name", "Token"},
+			{"Methods", "[]Function"},
+		}},
 		{"Function", []field{
 			{"Name", "Token"},
 			{"Params", "[]Token"},
