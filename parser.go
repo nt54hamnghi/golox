@@ -510,7 +510,7 @@ func (p *Parser) unary() (Expr, error) {
 	return p.call()
 }
 
-// call → primary ( "(" arguments? ")" )* ;
+// call → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 // arguments → expression ( "," expression )* ;
 func (p *Parser) call() (Expr, error) {
 	expr, err := p.primary()
@@ -518,9 +518,19 @@ func (p *Parser) call() (Expr, error) {
 		return nil, err
 	}
 
-	for p.match(LEFT_PAREN) {
-		if expr, err = p.finishCall(expr); err != nil {
-			return nil, err
+	for {
+		if p.match(LEFT_PAREN) {
+			if expr, err = p.finishCall(expr); err != nil {
+				return nil, err
+			}
+		} else if p.match(DOT) {
+			name, err := p.consume(IDENTIFIER, "Expect property name after '.'.")
+			if err != nil {
+				return nil, err
+			}
+			expr = NewGet(expr, name)
+		} else {
+			break
 		}
 	}
 

@@ -226,6 +226,20 @@ func (i *Interpreter) VisitCallExpr(expr Call) (any, error) {
 	return fun.Call(i, args), nil
 }
 
+// VisitGetExpr implements [ExprVisitor].
+func (i *Interpreter) VisitGetExpr(expr Get) (any, error) {
+	obj, err := i.evaluate(expr.Object)
+	if err != nil {
+		return nil, err
+	}
+
+	if instance, ok := obj.(LoxInstance); ok {
+		return instance.Get(expr.Name)
+	}
+
+	return nil, ErrorAtToken(expr.Name, "Only instances have properties.")
+}
+
 // VisitVariableExpr implements [ExprVisitor].
 func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
 	return i.lookUpVariable(expr.Name, expr)

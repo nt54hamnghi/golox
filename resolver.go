@@ -228,6 +228,16 @@ func (r *Resolver) VisitCallExpr(expr Call) (any, error) {
 	return nil, nil
 }
 
+// VisitGetExpr implements [ExprVisitor].
+func (r *Resolver) VisitGetExpr(expr Get) (any, error) {
+	_, err := r.resolveExpr(expr.Object)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 // VisitGroupingExpr implements [ExprVisitor].
 func (r *Resolver) VisitGroupingExpr(expr Grouping) (any, error) {
 	return r.resolveExpr(expr.Expression)

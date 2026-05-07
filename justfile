@@ -8,6 +8,12 @@ run *args:
 
 alias r := run
 
+# build the project
+build:
+    @go build -o ./tmp/golox .
+
+alias b := build
+
 # run the ast generator
 gen *args:
     @go run ./tool/generateAst.go {{ args }}

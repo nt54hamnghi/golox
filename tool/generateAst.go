@@ -20,6 +20,15 @@ func main() {
 
 	err := defineAst(outputDir, "Expr", []typeDesc{
 		{"Literal", []field{{"Value", "any"}}},
+		{"Call", []field{
+			{"Callee", "Expr"},
+			{"Paren", "Token"},
+			{"Arguments", "[]Expr"},
+		}},
+		{"Get", []field{
+			{"Object", "Expr"},
+			{"Name", "Token"},
+		}},
 		{"Grouping", []field{{"Expression", "Expr"}}},
 		{"Unary", []field{
 			{"Operator", "Token"},
@@ -39,11 +48,6 @@ func main() {
 			{"Left", "Expr"},
 			{"Operator", "Token"},
 			{"Right", "Expr"},
-		}},
-		{"Call", []field{
-			{"Callee", "Expr"},
-			{"Paren", "Token"},
-			{"Arguments", "[]Expr"},
 		}},
 	})
 	if err != nil {

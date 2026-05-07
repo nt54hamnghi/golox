@@ -21,6 +21,11 @@ func (p AstPrinter) VisitCallExpr(expr Call) (any, error) {
 	panic("unimplemented")
 }
 
+// VisitGetExpr implements [ExprVisitor].
+func (p AstPrinter) VisitGetExpr(expr Get) (any, error) {
+	panic("unimplemented")
+}
+
 // VisitLogicalExpr implements [ExprVisitor].
 func (p AstPrinter) VisitLogicalExpr(expr Logical) (any, error) {
 	panic("unimplemented")
