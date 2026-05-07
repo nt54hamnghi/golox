@@ -20,6 +20,10 @@ func (i LoxInstance) Get(name Token) (Object, error) {
 	return nil, ErrorAtToken(name, "Undefined property '"+name.Lexeme+"'.")
 }
 
+func (i LoxInstance) Set(name Token, value Object) {
+	i.fields[name.Lexeme] = value
+}
+
 func (i LoxInstance) String() string {
 	return i.class.Name + " instance"
 }

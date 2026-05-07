@@ -373,6 +373,8 @@ func (p *Parser) assignment() (Expr, error) {
 		if variable, ok := expr.(Variable); ok {
 			name := variable.Name
 			return NewAssignment(name, value), nil
+		} else if get, ok := expr.(Get); ok {
+			return NewSet(get.Object, get.Name, value), nil
 		}
 
 		return nil, ErrorAtToken(equal, "Invalid assignment target.")

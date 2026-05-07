@@ -230,8 +230,19 @@ func (r *Resolver) VisitCallExpr(expr Call) (any, error) {
 
 // VisitGetExpr implements [ExprVisitor].
 func (r *Resolver) VisitGetExpr(expr Get) (any, error) {
-	_, err := r.resolveExpr(expr.Object)
-	if err != nil {
+	if _, err := r.resolveExpr(expr.Object); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// VisitSetExpr implements [ExprVisitor].
+func (r *Resolver) VisitSetExpr(expr Set) (any, error) {
+	if _, err := r.resolveExpr(expr.Value); err != nil {
+		return nil, err
+	}
+	if _, err := r.resolveExpr(expr.Object); err != nil {
 		return nil, err
 	}
 

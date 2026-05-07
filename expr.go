@@ -14,6 +14,7 @@ func init() {
 	gob.Register(Literal{})
 	gob.Register(Call{})
 	gob.Register(Get{})
+	gob.Register(Set{})
 	gob.Register(Grouping{})
 	gob.Register(Unary{})
 	gob.Register(Variable{})
@@ -26,6 +27,7 @@ type ExprVisitor interface {
 	VisitLiteralExpr(expr Literal) (any, error)
 	VisitCallExpr(expr Call) (any, error)
 	VisitGetExpr(expr Get) (any, error)
+	VisitSetExpr(expr Set) (any, error)
 	VisitGroupingExpr(expr Grouping) (any, error)
 	VisitUnaryExpr(expr Unary) (any, error)
 	VisitVariableExpr(expr Variable) (any, error)
@@ -129,6 +131,45 @@ func (self Get) Id() NodeID {
 		Object Expr
 		Name   Token
 	}{Object: self.Object, Name: self.Name}
+	if nodeDigest(self.id.id, tmp) != self.id.digest {
+		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
+	}
+	return self.id
+}
+
+type Set struct {
+	Object Expr
+	Name   Token
+	Value  Expr
+	id     NodeID
+}
+
+func NewSet(object Expr, name Token, value Expr) Set {
+	node := Set{
+		Object: object,
+		Name:   name,
+		Value:  value,
+	}
+
+	tmp := struct {
+		Object Expr
+		Name   Token
+		Value  Expr
+	}{Object: node.Object, Name: node.Name, Value: node.Value}
+	node.id = NewNodeIDFrom(tmp)
+	return node
+}
+
+func (self Set) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitSetExpr(self)
+}
+
+func (self Set) Id() NodeID {
+	tmp := struct {
+		Object Expr
+		Name   Token
+		Value  Expr
+	}{Object: self.Object, Name: self.Name, Value: self.Value}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
 	}

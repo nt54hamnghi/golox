@@ -233,11 +233,33 @@ func (i *Interpreter) VisitGetExpr(expr Get) (any, error) {
 		return nil, err
 	}
 
-	if instance, ok := obj.(LoxInstance); ok {
-		return instance.Get(expr.Name)
+	instance, ok := obj.(LoxInstance)
+	if !ok {
+		return nil, ErrorAtToken(expr.Name, "Only instances have properties.")
 	}
 
-	return nil, ErrorAtToken(expr.Name, "Only instances have properties.")
+	return instance.Get(expr.Name)
+}
+
+// VisitSetExpr implements [ExprVisitor].
+func (i *Interpreter) VisitSetExpr(expr Set) (any, error) {
+	obj, err := i.evaluate(expr.Object)
+	if err != nil {
+		return nil, err
+	}
+
+	instance, ok := obj.(LoxInstance)
+	if !ok {
+		return nil, ErrorAtToken(expr.Name, "Only instances have fields.")
+	}
+
+	value, err := i.evaluate(expr.Value)
+	if err != nil {
+		return nil, err
+	}
+	instance.Set(expr.Name, value)
+
+	return value, nil
 }
 
 // VisitVariableExpr implements [ExprVisitor].

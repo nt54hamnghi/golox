@@ -19,7 +19,9 @@ func main() {
 	outputDir := args[0]
 
 	err := defineAst(outputDir, "Expr", []typeDesc{
-		{"Literal", []field{{"Value", "any"}}},
+		{"Literal", []field{
+			{"Value", "any"},
+		}},
 		{"Call", []field{
 			{"Callee", "Expr"},
 			{"Paren", "Token"},
@@ -29,12 +31,21 @@ func main() {
 			{"Object", "Expr"},
 			{"Name", "Token"},
 		}},
-		{"Grouping", []field{{"Expression", "Expr"}}},
+		{"Set", []field{
+			{"Object", "Expr"},
+			{"Name", "Token"},
+			{"Value", "Expr"},
+		}},
+		{"Grouping", []field{
+			{"Expression", "Expr"}},
+		},
 		{"Unary", []field{
 			{"Operator", "Token"},
 			{"Right", "Expr"},
 		}},
-		{"Variable", []field{{"Name", "Token"}}},
+		{"Variable", []field{
+			{"Name", "Token"}},
+		},
 		{"Assignment", []field{
 			{"Name", "Token"},
 			{"Value", "Expr"},
@@ -55,8 +66,12 @@ func main() {
 	}
 
 	err = defineAst(outputDir, "Stmt", []typeDesc{
-		{"Expression", []field{{"Expression", "Expr"}}},
-		{"Print", []field{{"Expression", "Expr"}}},
+		{"Expression", []field{
+			{"Expression", "Expr"},
+		}},
+		{"Print", []field{
+			{"Expression", "Expr"},
+		}},
 		{"Var", []field{
 			{"Name", "Token"},
 			{"Initializer", "Expr"},
