@@ -7,8 +7,9 @@ import (
 type funType int
 
 const (
-	FUNCTION funType = iota
-	NONE
+	NONE funType = iota
+	FUNCTION
+	METHOD
 )
 
 func (f funType) String() string {
@@ -78,6 +79,13 @@ func (r *Resolver) VisitBlockStmt(stmt Block) (any, error) {
 // VisitClassStmt implements [StmtVisitor].
 func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
 	r.declare(stmt.Name)
+
+	for _, method := range stmt.Methods {
+		if _, err := r.resolveFunction(method, METHOD); err != nil {
+			return nil, err
+		}
+	}
+
 	r.define(stmt.Name)
 	return nil, nil
 }
