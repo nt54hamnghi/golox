@@ -592,6 +592,10 @@ func (p *Parser) primary() (Expr, error) {
 		return NewGrouping(expr), nil
 	}
 
+	if p.match(THIS) {
+		return NewThis(p.previous()), nil
+	}
+
 	if p.match(IDENTIFIER) {
 		return NewVariable(p.previous()), nil
 	}

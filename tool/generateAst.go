@@ -36,6 +36,9 @@ func main() {
 			{"Name", "Token"},
 			{"Value", "Expr"},
 		}},
+		{"This", []field{
+			{"Keyword", "Token"},
+		}},
 		{"Grouping", []field{
 			{"Expression", "Expr"}},
 		},

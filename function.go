@@ -15,6 +15,16 @@ func NewLoxFunction(declaration Function, closure Environment) LoxFunction {
 	return LoxFunction{declaration, closure}
 }
 
+func (lf LoxFunction) bind(this LoxInstance) LoxFunction {
+	env := NewEnclosedEnvinronment(&lf.closure)
+	env.Define("this", this)
+	return LoxFunction{
+		lf.declaration,
+		env,
+	}
+}
+
+// Call implements [LoxCallable].
 func (lf LoxFunction) Call(interpreter *Interpreter, args []Object) Object {
 	environment := NewEnclosedEnvinronment(&lf.closure)
 
@@ -35,6 +45,7 @@ func (lf LoxFunction) Call(interpreter *Interpreter, args []Object) Object {
 	return returnThis.Value
 }
 
+// Arity implements [LoxCallable].
 func (lf LoxFunction) Arity() int {
 	return len(lf.declaration.Params)
 }

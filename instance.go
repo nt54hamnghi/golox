@@ -17,8 +17,9 @@ func (i LoxInstance) Get(name Token) (Object, error) {
 		return field, nil
 	}
 
-	if method := i.class.FindMethod(name.Lexeme); method != nil {
-		return *method, nil
+	method := i.class.FindMethod(name.Lexeme)
+	if method != nil {
+		return method.bind(i), nil
 	}
 
 	return nil, ErrorAtToken(name, "Undefined property '"+name.Lexeme+"'.")

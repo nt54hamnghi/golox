@@ -79,14 +79,18 @@ func (r *Resolver) VisitBlockStmt(stmt Block) (any, error) {
 // VisitClassStmt implements [StmtVisitor].
 func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
 	r.declare(stmt.Name)
+	r.define(stmt.Name)
 
+	r.beginScope()
+	s, _ := r.scopes.Peek()
+	s["this"] = true
 	for _, method := range stmt.Methods {
 		if _, err := r.resolveFunction(method, METHOD); err != nil {
 			return nil, err
 		}
 	}
+	r.endScope()
 
-	r.define(stmt.Name)
 	return nil, nil
 }
 
@@ -254,6 +258,12 @@ func (r *Resolver) VisitSetExpr(expr Set) (any, error) {
 		return nil, err
 	}
 
+	return nil, nil
+}
+
+// VisitThisExpr implements [ExprVisitor].
+func (r *Resolver) VisitThisExpr(expr This) (any, error) {
+	r.resolveLocal(expr, expr.Keyword)
 	return nil, nil
 }
 

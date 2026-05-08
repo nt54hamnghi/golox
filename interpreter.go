@@ -266,6 +266,11 @@ func (i *Interpreter) VisitSetExpr(expr Set) (any, error) {
 	return value, nil
 }
 
+// VisitThisExpr implements [ExprVisitor].
+func (i *Interpreter) VisitThisExpr(expr This) (any, error) {
+	return i.lookUpVariable(expr.Keyword, expr)
+}
+
 // VisitVariableExpr implements [ExprVisitor].
 func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
 	return i.lookUpVariable(expr.Name, expr)
@@ -274,7 +279,7 @@ func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
 // lookUpVariable finds the resolved distance in the locals map.
 // If we don’t find a distance, it must be global, so we look it up
 // directly in the global environment.
-func (i Interpreter) lookUpVariable(name Token, expr Variable) (any, error) {
+func (i Interpreter) lookUpVariable(name Token, expr Expr) (any, error) {
 	if distance, ok := i.locals[expr.Id()]; ok {
 		return i.environment.GetAt(distance, name)
 	} else {
