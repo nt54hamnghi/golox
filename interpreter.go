@@ -75,7 +75,8 @@ func (i *Interpreter) VisitClassStmt(stmt Class) (any, error) {
 	i.environment.Define(stmt.Name.Lexeme, nil)
 	methods := make(map[string]LoxFunction)
 	for _, method := range stmt.Methods {
-		methods[method.Name.Lexeme] = NewLoxFunction(method, i.environment)
+		isInitializer := method.Name.Lexeme == "init"
+		methods[method.Name.Lexeme] = NewLoxFunction(method, i.environment, isInitializer)
 	}
 	class := NewLoxClass(stmt.Name.Lexeme, methods)
 	i.environment.Assign(stmt.Name, class)
@@ -100,7 +101,7 @@ func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
 
 // VisitFunctionStmt implements [StmtVisitor].
 func (i *Interpreter) VisitFunctionStmt(stmt Function) (any, error) {
-	function := NewLoxFunction(stmt, i.environment)
+	function := NewLoxFunction(stmt, i.environment, false)
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil, nil
 }
@@ -281,7 +282,7 @@ func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
 // directly in the global environment.
 func (i Interpreter) lookUpVariable(name Token, expr Expr) (any, error) {
 	if distance, ok := i.locals[expr.Id()]; ok {
-		return i.environment.GetAt(distance, name)
+		return i.environment.GetAt(distance, name.Lexeme), nil
 	} else {
 		return globals.Get(name)
 	}

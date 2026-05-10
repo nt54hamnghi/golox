@@ -17,8 +17,8 @@ func (i LoxInstance) Get(name Token) (Object, error) {
 		return field, nil
 	}
 
-	method := i.class.FindMethod(name.Lexeme)
-	if method != nil {
+	method, exist := i.class.FindMethod(name.Lexeme)
+	if exist {
 		return method.bind(i), nil
 	}
 

@@ -9,6 +9,7 @@ type funType int
 const (
 	NONE_F funType = iota
 	FUNCTION
+	INITIALIZER
 	METHOD
 )
 
@@ -98,7 +99,12 @@ func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
 	s, _ := r.scopes.Peek()
 	s["this"] = true
 	for _, method := range stmt.Methods {
-		if _, err := r.resolveFunction(method, METHOD); err != nil {
+		funT := METHOD
+		if method.Name.Lexeme == "init" {
+			funT = INITIALIZER
+		}
+		_, err := r.resolveFunction(method, funT)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -204,6 +210,9 @@ func (r *Resolver) VisitReturnStmt(stmt Return) (any, error) {
 		return nil, ErrorAtToken(stmt.Keyword, "Can't return from top-level code.")
 	}
 	if stmt.Value != nil {
+		if r.currentFunType == INITIALIZER {
+			return nil, ErrorAtToken(stmt.Keyword, "Can't return a value from an initializer.")
+		}
 		return r.resolveExpr(stmt.Value)
 	}
 	return nil, nil

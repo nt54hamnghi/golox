@@ -45,10 +45,7 @@ func (e *Environment) Assign(name Token, value Object) error {
 		return e.enclosing.Assign(name, value)
 	}
 
-	return RuntimeError{
-		name,
-		fmt.Sprintf("Undefined variable '%s'.", name.Lexeme),
-	}
+	return undefinedVariable(name)
 }
 
 func (e Environment) AssignAt(distance int, name Token, value Object) error {
@@ -78,14 +75,11 @@ func (e Environment) Get(name Token) (Object, error) {
 		return e.enclosing.Get(name)
 	}
 
-	return nil, RuntimeError{
-		name,
-		fmt.Sprintf("Undefined variable '%s'.", name.Lexeme),
-	}
+	return nil, undefinedVariable(name)
 }
 
-func (e Environment) GetAt(distance int, name Token) (Object, error) {
-	return e.ancestor(distance).values[name.Lexeme], nil
+func (e Environment) GetAt(distance int, name string) Object {
+	return e.ancestor(distance).values[name]
 }
 
 func (e Environment) ancestor(distance int) Environment {
@@ -94,4 +88,11 @@ func (e Environment) ancestor(distance int) Environment {
 		curr = *curr.enclosing
 	}
 	return curr
+}
+
+func undefinedVariable(name Token) RuntimeError {
+	return RuntimeError{
+		name,
+		fmt.Sprintf("Undefined variable '%s'.", name.Lexeme),
+	}
 }
