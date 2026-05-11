@@ -7,5 +7,5 @@ type ReturnThis struct {
 }
 
 func (rt ReturnThis) Error() string {
-	return fmt.Sprintf("%v", rt)
+	return fmt.Sprintf("%v", rt.Value)
 }

@@ -19,13 +19,36 @@ func main() {
 	outputDir := args[0]
 
 	err := defineAst(outputDir, "Expr", []typeDesc{
-		{"Literal", []field{{"Value", "any"}}},
-		{"Grouping", []field{{"Expression", "Expr"}}},
+		{"Literal", []field{
+			{"Value", "any"},
+		}},
+		{"Call", []field{
+			{"Callee", "Expr"},
+			{"Paren", "Token"},
+			{"Arguments", "[]Expr"},
+		}},
+		{"Get", []field{
+			{"Object", "Expr"},
+			{"Name", "Token"},
+		}},
+		{"Set", []field{
+			{"Object", "Expr"},
+			{"Name", "Token"},
+			{"Value", "Expr"},
+		}},
+		{"This", []field{
+			{"Keyword", "Token"},
+		}},
+		{"Grouping", []field{
+			{"Expression", "Expr"}},
+		},
 		{"Unary", []field{
 			{"Operator", "Token"},
 			{"Right", "Expr"},
 		}},
-		{"Variable", []field{{"Name", "Token"}}},
+		{"Variable", []field{
+			{"Name", "Token"}},
+		},
 		{"Assignment", []field{
 			{"Name", "Token"},
 			{"Value", "Expr"},
@@ -40,22 +63,25 @@ func main() {
 			{"Operator", "Token"},
 			{"Right", "Expr"},
 		}},
-		{"Call", []field{
-			{"Callee", "Expr"},
-			{"Paren", "Token"},
-			{"Arguments", "[]Expr"},
-		}},
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	err = defineAst(outputDir, "Stmt", []typeDesc{
-		{"Expression", []field{{"Expression", "Expr"}}},
-		{"Print", []field{{"Expression", "Expr"}}},
+		{"Expression", []field{
+			{"Expression", "Expr"},
+		}},
+		{"Print", []field{
+			{"Expression", "Expr"},
+		}},
 		{"Var", []field{
 			{"Name", "Token"},
 			{"Initializer", "Expr"},
+		}},
+		{"Class", []field{
+			{"Name", "Token"},
+			{"Methods", "[]Function"},
 		}},
 		{"Function", []field{
 			{"Name", "Token"},

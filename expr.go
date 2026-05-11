@@ -12,24 +12,30 @@ type Expr interface {
 
 func init() {
 	gob.Register(Literal{})
+	gob.Register(Call{})
+	gob.Register(Get{})
+	gob.Register(Set{})
+	gob.Register(This{})
 	gob.Register(Grouping{})
 	gob.Register(Unary{})
 	gob.Register(Variable{})
 	gob.Register(Assignment{})
 	gob.Register(Binary{})
 	gob.Register(Logical{})
-	gob.Register(Call{})
 }
 
 type ExprVisitor interface {
 	VisitLiteralExpr(expr Literal) (any, error)
+	VisitCallExpr(expr Call) (any, error)
+	VisitGetExpr(expr Get) (any, error)
+	VisitSetExpr(expr Set) (any, error)
+	VisitThisExpr(expr This) (any, error)
 	VisitGroupingExpr(expr Grouping) (any, error)
 	VisitUnaryExpr(expr Unary) (any, error)
 	VisitVariableExpr(expr Variable) (any, error)
 	VisitAssignmentExpr(expr Assignment) (any, error)
 	VisitBinaryExpr(expr Binary) (any, error)
 	VisitLogicalExpr(expr Logical) (any, error)
-	VisitCallExpr(expr Call) (any, error)
 }
 
 type Literal struct {
@@ -53,6 +59,146 @@ func (self Literal) Accept(visitor ExprVisitor) (any, error) {
 
 func (self Literal) Id() NodeID {
 	tmp := struct{ Value any }{Value: self.Value}
+	if nodeDigest(self.id.id, tmp) != self.id.digest {
+		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
+	}
+	return self.id
+}
+
+type Call struct {
+	Callee    Expr
+	Paren     Token
+	Arguments []Expr
+	id        NodeID
+}
+
+func NewCall(callee Expr, paren Token, arguments []Expr) Call {
+	node := Call{
+		Callee:    callee,
+		Paren:     paren,
+		Arguments: arguments,
+	}
+
+	tmp := struct {
+		Callee    Expr
+		Paren     Token
+		Arguments []Expr
+	}{Callee: node.Callee, Paren: node.Paren, Arguments: node.Arguments}
+	node.id = NewNodeIDFrom(tmp)
+	return node
+}
+
+func (self Call) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitCallExpr(self)
+}
+
+func (self Call) Id() NodeID {
+	tmp := struct {
+		Callee    Expr
+		Paren     Token
+		Arguments []Expr
+	}{Callee: self.Callee, Paren: self.Paren, Arguments: self.Arguments}
+	if nodeDigest(self.id.id, tmp) != self.id.digest {
+		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
+	}
+	return self.id
+}
+
+type Get struct {
+	Object Expr
+	Name   Token
+	id     NodeID
+}
+
+func NewGet(object Expr, name Token) Get {
+	node := Get{
+		Object: object,
+		Name:   name,
+	}
+
+	tmp := struct {
+		Object Expr
+		Name   Token
+	}{Object: node.Object, Name: node.Name}
+	node.id = NewNodeIDFrom(tmp)
+	return node
+}
+
+func (self Get) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitGetExpr(self)
+}
+
+func (self Get) Id() NodeID {
+	tmp := struct {
+		Object Expr
+		Name   Token
+	}{Object: self.Object, Name: self.Name}
+	if nodeDigest(self.id.id, tmp) != self.id.digest {
+		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
+	}
+	return self.id
+}
+
+type Set struct {
+	Object Expr
+	Name   Token
+	Value  Expr
+	id     NodeID
+}
+
+func NewSet(object Expr, name Token, value Expr) Set {
+	node := Set{
+		Object: object,
+		Name:   name,
+		Value:  value,
+	}
+
+	tmp := struct {
+		Object Expr
+		Name   Token
+		Value  Expr
+	}{Object: node.Object, Name: node.Name, Value: node.Value}
+	node.id = NewNodeIDFrom(tmp)
+	return node
+}
+
+func (self Set) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitSetExpr(self)
+}
+
+func (self Set) Id() NodeID {
+	tmp := struct {
+		Object Expr
+		Name   Token
+		Value  Expr
+	}{Object: self.Object, Name: self.Name, Value: self.Value}
+	if nodeDigest(self.id.id, tmp) != self.id.digest {
+		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
+	}
+	return self.id
+}
+
+type This struct {
+	Keyword Token
+	id      NodeID
+}
+
+func NewThis(keyword Token) This {
+	node := This{
+		Keyword: keyword,
+	}
+
+	tmp := struct{ Keyword Token }{Keyword: node.Keyword}
+	node.id = NewNodeIDFrom(tmp)
+	return node
+}
+
+func (self This) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitThisExpr(self)
+}
+
+func (self This) Id() NodeID {
+	tmp := struct{ Keyword Token }{Keyword: self.Keyword}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
 	}
@@ -255,45 +401,6 @@ func (self Logical) Id() NodeID {
 		Operator Token
 		Right    Expr
 	}{Left: self.Left, Operator: self.Operator, Right: self.Right}
-	if nodeDigest(self.id.id, tmp) != self.id.digest {
-		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
-	}
-	return self.id
-}
-
-type Call struct {
-	Callee    Expr
-	Paren     Token
-	Arguments []Expr
-	id        NodeID
-}
-
-func NewCall(callee Expr, paren Token, arguments []Expr) Call {
-	node := Call{
-		Callee:    callee,
-		Paren:     paren,
-		Arguments: arguments,
-	}
-
-	tmp := struct {
-		Callee    Expr
-		Paren     Token
-		Arguments []Expr
-	}{Callee: node.Callee, Paren: node.Paren, Arguments: node.Arguments}
-	node.id = NewNodeIDFrom(tmp)
-	return node
-}
-
-func (self Call) Accept(visitor ExprVisitor) (any, error) {
-	return visitor.VisitCallExpr(self)
-}
-
-func (self Call) Id() NodeID {
-	tmp := struct {
-		Callee    Expr
-		Paren     Token
-		Arguments []Expr
-	}{Callee: self.Callee, Paren: self.Paren, Arguments: self.Arguments}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
 	}
