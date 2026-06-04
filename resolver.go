@@ -7,8 +7,17 @@ import (
 type funType int
 
 const (
-	FUNCTION funType = iota
-	NONE
+	NONE_F funType = iota
+	FUNCTION
+	INITIALIZER
+	METHOD
+)
+
+type classType int
+
+const (
+	NONE_C classType = iota
+	KLASS
 )
 
 func (f funType) String() string {
@@ -25,15 +34,17 @@ type Resolver struct {
 	// A stack of scopes, representing nesting lexical scopes.
 	// The innermost scope is at the top of the stack, and the
 	// outermost scope is at the bottom.
-	scopes         stack.Stack[scope]
-	currentFunType funType
+	scopes           stack.Stack[scope]
+	currentFunType   funType
+	currentClassType classType
 }
 
 func NewResolver(interpreter *Interpreter) Resolver {
 	return Resolver{
-		interpreter:    interpreter,
-		scopes:         stack.NewStack[scope](),
-		currentFunType: NONE,
+		interpreter:      interpreter,
+		scopes:           stack.NewStack[scope](),
+		currentFunType:   NONE_F,
+		currentClassType: NONE_C,
 	}
 }
 
@@ -72,6 +83,33 @@ func (r *Resolver) VisitBlockStmt(stmt Block) (any, error) {
 		return nil, err
 	}
 	r.endScope()
+	return nil, nil
+}
+
+// VisitClassStmt implements [StmtVisitor].
+func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
+	enclosingClassType := r.currentClassType
+	r.currentClassType = KLASS
+	defer func() { r.currentClassType = enclosingClassType }()
+
+	r.declare(stmt.Name)
+	r.define(stmt.Name)
+
+	r.beginScope()
+	s, _ := r.scopes.Peek()
+	s["this"] = true
+	for _, method := range stmt.Methods {
+		funT := METHOD
+		if method.Name.Lexeme == "init" {
+			funT = INITIALIZER
+		}
+		_, err := r.resolveFunction(method, funT)
+		if err != nil {
+			return nil, err
+		}
+	}
+	r.endScope()
+
 	return nil, nil
 }
 
@@ -127,9 +165,9 @@ func (r *Resolver) VisitFunctionStmt(stmt Function) (any, error) {
 }
 
 func (r *Resolver) resolveFunction(fun Function, funT funType) (any, error) {
-	enclosingFuncType := r.currentFunType
+	enclosingFunType := r.currentFunType
 	r.currentFunType = funT
-	defer func() { r.currentFunType = enclosingFuncType }()
+	defer func() { r.currentFunType = enclosingFunType }()
 
 	r.beginScope()
 	for _, param := range fun.Params {
@@ -168,10 +206,13 @@ func (r *Resolver) VisitPrintStmt(stmt Print) (any, error) {
 
 // VisitReturnStmt implements [StmtVisitor].
 func (r *Resolver) VisitReturnStmt(stmt Return) (any, error) {
-	if r.currentFunType == NONE {
+	if r.currentFunType == NONE_F {
 		return nil, ErrorAtToken(stmt.Keyword, "Can't return from top-level code.")
 	}
 	if stmt.Value != nil {
+		if r.currentFunType == INITIALIZER {
+			return nil, ErrorAtToken(stmt.Keyword, "Can't return a value from an initializer.")
+		}
 		return r.resolveExpr(stmt.Value)
 	}
 	return nil, nil
@@ -218,6 +259,39 @@ func (r *Resolver) VisitCallExpr(expr Call) (any, error) {
 			return nil, err
 		}
 	}
+	return nil, nil
+}
+
+// VisitGetExpr implements [ExprVisitor].
+func (r *Resolver) VisitGetExpr(expr Get) (any, error) {
+	if _, err := r.resolveExpr(expr.Object); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// VisitSetExpr implements [ExprVisitor].
+func (r *Resolver) VisitSetExpr(expr Set) (any, error) {
+	if _, err := r.resolveExpr(expr.Value); err != nil {
+		return nil, err
+	}
+	if _, err := r.resolveExpr(expr.Object); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// VisitThisExpr implements [ExprVisitor].
+func (r *Resolver) VisitThisExpr(expr This) (any, error) {
+	if r.currentClassType == NONE_C {
+		return nil, ErrorAtToken(
+			expr.Keyword,
+			"Can't use 'this' outside of a class.",
+		)
+	}
+	r.resolveLocal(expr, expr.Keyword)
 	return nil, nil
 }
 

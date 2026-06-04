@@ -14,6 +14,7 @@ func init() {
 	gob.Register(Expression{})
 	gob.Register(Print{})
 	gob.Register(Var{})
+	gob.Register(Class{})
 	gob.Register(Function{})
 	gob.Register(If{})
 	gob.Register(While{})
@@ -25,6 +26,7 @@ type StmtVisitor interface {
 	VisitExpressionStmt(stmt Expression) (any, error)
 	VisitPrintStmt(stmt Print) (any, error)
 	VisitVarStmt(stmt Var) (any, error)
+	VisitClassStmt(stmt Class) (any, error)
 	VisitFunctionStmt(stmt Function) (any, error)
 	VisitIfStmt(stmt If) (any, error)
 	VisitWhileStmt(stmt While) (any, error)
@@ -115,6 +117,41 @@ func (self Var) Id() NodeID {
 		Name        Token
 		Initializer Expr
 	}{Name: self.Name, Initializer: self.Initializer}
+	if nodeDigest(self.id.id, tmp) != self.id.digest {
+		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
+	}
+	return self.id
+}
+
+type Class struct {
+	Name    Token
+	Methods []Function
+	id      NodeID
+}
+
+func NewClass(name Token, methods []Function) Class {
+	node := Class{
+		Name:    name,
+		Methods: methods,
+	}
+
+	tmp := struct {
+		Name    Token
+		Methods []Function
+	}{Name: node.Name, Methods: node.Methods}
+	node.id = NewNodeIDFrom(tmp)
+	return node
+}
+
+func (self Class) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitClassStmt(self)
+}
+
+func (self Class) Id() NodeID {
+	tmp := struct {
+		Name    Token
+		Methods []Function
+	}{Name: self.Name, Methods: self.Methods}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
 	}

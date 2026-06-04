@@ -32,15 +32,48 @@ func (p Parser) Parse() []Stmt {
 	return stmts
 }
 
-// declaration → funDecl | varDecl | statement ;
+// declaration → classDecl | funDecl | varDecl | statement ;
 func (p *Parser) declaration() (Stmt, error) {
 	if p.match(FUN) {
 		return p.function("function")
+	}
+	if p.match(CLASS) {
+		return p.classDeclaration()
 	}
 	if p.match(VAR) {
 		return p.varDeclaration()
 	}
 	return p.statement()
+}
+
+// classDecl → "class" IDENTIFIER "{" function* "}";
+func (p *Parser) classDeclaration() (Stmt, error) {
+	name, err := p.consume(IDENTIFIER, "Expect class name.")
+	if err != nil {
+		return nil, err
+	}
+	if _, err = p.consume(LEFT_BRACE, "Expect '{' before class body."); err != nil {
+		return nil, err
+	}
+
+	methods := make([]Function, 0)
+	for !p.check(RIGHT_BRACE) && !p.isAtEnd() {
+		stmt, err := p.function("method")
+		if err != nil {
+			return nil, err
+		}
+		method, ok := stmt.(Function)
+		if !ok {
+			panic("unexpected stmt type, while parsing class methods")
+		}
+		methods = append(methods, method)
+	}
+
+	if _, err = p.consume(RIGHT_BRACE, "Expect '}' after class body."); err != nil {
+		return nil, err
+	}
+
+	return NewClass(name, methods), nil
 }
 
 func (p *Parser) function(kind string) (Stmt, error) {
@@ -340,6 +373,8 @@ func (p *Parser) assignment() (Expr, error) {
 		if variable, ok := expr.(Variable); ok {
 			name := variable.Name
 			return NewAssignment(name, value), nil
+		} else if get, ok := expr.(Get); ok {
+			return NewSet(get.Object, get.Name, value), nil
 		}
 
 		return nil, ErrorAtToken(equal, "Invalid assignment target.")
@@ -477,7 +512,7 @@ func (p *Parser) unary() (Expr, error) {
 	return p.call()
 }
 
-// call → primary ( "(" arguments? ")" )* ;
+// call → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 // arguments → expression ( "," expression )* ;
 func (p *Parser) call() (Expr, error) {
 	expr, err := p.primary()
@@ -485,9 +520,19 @@ func (p *Parser) call() (Expr, error) {
 		return nil, err
 	}
 
-	for p.match(LEFT_PAREN) {
-		if expr, err = p.finishCall(expr); err != nil {
-			return nil, err
+	for {
+		if p.match(LEFT_PAREN) {
+			if expr, err = p.finishCall(expr); err != nil {
+				return nil, err
+			}
+		} else if p.match(DOT) {
+			name, err := p.consume(IDENTIFIER, "Expect property name after '.'.")
+			if err != nil {
+				return nil, err
+			}
+			expr = NewGet(expr, name)
+		} else {
+			break
 		}
 	}
 
@@ -498,13 +543,13 @@ func (p *Parser) finishCall(callee Expr) (Expr, error) {
 	args := make([]Expr, 0)
 	if !p.check(RIGHT_PAREN) {
 		for {
+			if len(args) >= 255 {
+				err := ErrorAtToken(p.peek(), "Can't have more than 255 arguments.")
+				fmt.Fprint(os.Stderr, err.Error())
+			}
 			expr, err := p.expression()
 			if err != nil {
 				return nil, err
-			}
-			if len(args) >= 255 {
-				err = ErrorAtToken(p.peek(), "Can't have more than 255 arguments.")
-				fmt.Fprint(os.Stderr, err.Error())
 			}
 			args = append(args, expr)
 			if !p.match(COMMA) {
@@ -545,6 +590,10 @@ func (p *Parser) primary() (Expr, error) {
 			return nil, err
 		}
 		return NewGrouping(expr), nil
+	}
+
+	if p.match(THIS) {
+		return NewThis(p.previous()), nil
 	}
 
 	if p.match(IDENTIFIER) {

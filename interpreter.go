@@ -70,6 +70,19 @@ func (i *Interpreter) VisitBlockStmt(stmt Block) (any, error) {
 	return i.executeBlock(stmt.Stmts, inner)
 }
 
+// VisitClassStmt implements [StmtVisitor].
+func (i *Interpreter) VisitClassStmt(stmt Class) (any, error) {
+	i.environment.Define(stmt.Name.Lexeme, nil)
+	methods := make(map[string]LoxFunction)
+	for _, method := range stmt.Methods {
+		isInitializer := method.Name.Lexeme == "init"
+		methods[method.Name.Lexeme] = NewLoxFunction(method, i.environment, isInitializer)
+	}
+	class := NewLoxClass(stmt.Name.Lexeme, methods)
+	i.environment.Assign(stmt.Name, class)
+	return nil, nil
+}
+
 // VisitWhileStmt implements [StmtVisitor].
 func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
 	for {
@@ -88,7 +101,7 @@ func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
 
 // VisitFunctionStmt implements [StmtVisitor].
 func (i *Interpreter) VisitFunctionStmt(stmt Function) (any, error) {
-	function := NewLoxFunction(stmt, i.environment)
+	function := NewLoxFunction(stmt, i.environment, false)
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil, nil
 }
@@ -218,6 +231,47 @@ func (i *Interpreter) VisitCallExpr(expr Call) (any, error) {
 	return fun.Call(i, args), nil
 }
 
+// VisitGetExpr implements [ExprVisitor].
+func (i *Interpreter) VisitGetExpr(expr Get) (any, error) {
+	obj, err := i.evaluate(expr.Object)
+	if err != nil {
+		return nil, err
+	}
+
+	instance, ok := obj.(LoxInstance)
+	if !ok {
+		return nil, ErrorAtToken(expr.Name, "Only instances have properties.")
+	}
+
+	return instance.Get(expr.Name)
+}
+
+// VisitSetExpr implements [ExprVisitor].
+func (i *Interpreter) VisitSetExpr(expr Set) (any, error) {
+	obj, err := i.evaluate(expr.Object)
+	if err != nil {
+		return nil, err
+	}
+
+	instance, ok := obj.(LoxInstance)
+	if !ok {
+		return nil, ErrorAtToken(expr.Name, "Only instances have fields.")
+	}
+
+	value, err := i.evaluate(expr.Value)
+	if err != nil {
+		return nil, err
+	}
+	instance.Set(expr.Name, value)
+
+	return value, nil
+}
+
+// VisitThisExpr implements [ExprVisitor].
+func (i *Interpreter) VisitThisExpr(expr This) (any, error) {
+	return i.lookUpVariable(expr.Keyword, expr)
+}
+
 // VisitVariableExpr implements [ExprVisitor].
 func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
 	return i.lookUpVariable(expr.Name, expr)
@@ -226,9 +280,9 @@ func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
 // lookUpVariable finds the resolved distance in the locals map.
 // If we don’t find a distance, it must be global, so we look it up
 // directly in the global environment.
-func (i Interpreter) lookUpVariable(name Token, expr Variable) (any, error) {
+func (i Interpreter) lookUpVariable(name Token, expr Expr) (any, error) {
 	if distance, ok := i.locals[expr.Id()]; ok {
-		return i.environment.GetAt(distance, name)
+		return i.environment.GetAt(distance, name.Lexeme), nil
 	} else {
 		return globals.Get(name)
 	}

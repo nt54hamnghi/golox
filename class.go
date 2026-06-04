@@ -1,0 +1,42 @@
+package main
+
+type LoxClass struct {
+	Name    string
+	methods map[string]LoxFunction
+}
+
+func NewLoxClass(name string, methods map[string]LoxFunction) *LoxClass {
+	return &LoxClass{name, methods}
+}
+
+func (cls *LoxClass) FindMethod(name string) (LoxFunction, bool) {
+	if method, ok := cls.methods[name]; ok {
+		return method, true
+	}
+	return LoxFunction{}, false
+}
+
+func (cls *LoxClass) String() string {
+	return cls.Name
+}
+
+// Call implements [Callable].
+func (cls *LoxClass) Call(interpreter *Interpreter, arguments []Object) Object {
+	instance := NewLoxInstance(cls)
+
+	init, exist := cls.FindMethod("init")
+	if exist {
+		return init.bind(instance).Call(interpreter, arguments)
+	}
+
+	return instance
+}
+
+// Arity implements [Callable].
+func (cls *LoxClass) Arity() int {
+	init, exist := cls.FindMethod("init")
+	if !exist {
+		return 0
+	}
+	return init.Arity()
+}
