@@ -228,7 +228,7 @@ func (i *Interpreter) VisitCallExpr(expr Call) (any, error) {
 		}
 	}
 
-	return fun.Call(i, args), nil
+	return fun.Call(i, args)
 }
 
 // VisitGetExpr implements [ExprVisitor].

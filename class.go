@@ -21,7 +21,7 @@ func (cls *LoxClass) String() string {
 }
 
 // Call implements [Callable].
-func (cls *LoxClass) Call(interpreter *Interpreter, arguments []Object) Object {
+func (cls *LoxClass) Call(interpreter *Interpreter, arguments []Object) (Object, error) {
 	instance := NewLoxInstance(cls)
 
 	init, exist := cls.FindMethod("init")
@@ -29,7 +29,7 @@ func (cls *LoxClass) Call(interpreter *Interpreter, arguments []Object) Object {
 		return init.bind(instance).Call(interpreter, arguments)
 	}
 
-	return instance
+	return instance, nil
 }
 
 // Arity implements [Callable].
