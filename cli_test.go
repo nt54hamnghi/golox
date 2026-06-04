@@ -8,8 +8,30 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
+
+type cliSuite struct {
+	suite.Suite
+	binaryPath *string
+}
+
+func (s *cliSuite) SetupSuite() {
+	tmpDir := s.T().TempDir()
+
+	binaryPath := filepath.Join(tmpDir, "golox")
+	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
+	cmd.Dir = "."
+
+	output, err := cmd.CombinedOutput()
+	s.Require().NoError(err, string(output))
+
+	s.binaryPath = &binaryPath
+}
+
+func TestUserServiceSuite(t *testing.T) {
+	suite.Run(t, new(cliSuite))
+}
 
 type cliResult struct {
 	stdout   string
@@ -17,40 +39,23 @@ type cliResult struct {
 	exitCode int
 }
 
-func buildCLIForTest(t *testing.T) string {
-	t.Helper()
-	r := require.New(t)
+func (s *cliSuite) runCLI(source string) cliResult {
+	s.T().Helper()
+	r := s.Require()
 
-	tmpDir := t.TempDir()
-	binaryPath := filepath.Join(tmpDir, "golox")
-	cacheDir := filepath.Join(tmpDir, "gocache")
-
-	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
-	cmd.Dir = "."
-	cmd.Env = append(os.Environ(), "GOCACHE="+cacheDir)
-
-	output, err := cmd.CombinedOutput()
-	r.NoError(err, string(output))
-
-	return binaryPath
-}
-
-func runCLIForTest(t *testing.T, binaryPath string, source string) cliResult {
-	t.Helper()
-	r := require.New(t)
-
-	tmpDir := t.TempDir()
+	tmpDir := s.T().TempDir()
 	scriptPath := filepath.Join(tmpDir, "test.lox")
-	r.NoError(os.WriteFile(scriptPath, []byte(source), 0o644))
+	err := os.WriteFile(scriptPath, []byte(source), 0o644)
+	r.NoError(err)
 
-	cmd := exec.Command(binaryPath, scriptPath)
+	cmd := exec.Command(*s.binaryPath, scriptPath)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+	var exitCode int
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
-	exitCode := 0
+	err = cmd.Run()
 	if err != nil {
 		var exitErr *exec.ExitError
 		r.True(errors.As(err, &exitErr), err.Error())
@@ -64,9 +69,7 @@ func runCLIForTest(t *testing.T, binaryPath string, source string) cliResult {
 	}
 }
 
-func TestCLIPrintStatementsSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
-
+func (s *cliSuite) TestCLIPrintStatementsSuccess() {
 	tests := []struct {
 		name       string
 		source     string
@@ -97,21 +100,20 @@ print "non-ascii: ॐ";
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
 			r.Empty(result.stderr)
 		})
+
 	}
 }
 
-func TestCLIRuntimeErrorsReportStderrAndExit70(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
-
+func (s *cliSuite) TestCLIRuntimeErrorsReportStderrAndExit70() {
 	tests := []struct {
 		name       string
 		source     string
@@ -149,10 +151,10 @@ print world;
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(70, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -161,8 +163,7 @@ print world;
 	}
 }
 
-func TestCLIParseErrorsReflectCurrentBehavior(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIParseErrorsReflectCurrentBehavior() {
 
 	tests := []struct {
 		name       string
@@ -191,10 +192,10 @@ print;
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Empty(result.stdout)
@@ -203,8 +204,7 @@ print;
 	}
 }
 
-func TestCLIIfStatementsSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIIfStatementsSuccess() {
 
 	tests := []struct {
 		name       string
@@ -267,9 +267,9 @@ if (!isAdult) { print "not eligible for voting"; }
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := require.New(t)
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -278,8 +278,7 @@ if (!isAdult) { print "not eligible for voting"; }
 	}
 }
 
-func TestCLIElseStatementsSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIElseStatementsSuccess() {
 
 	tests := []struct {
 		name       string
@@ -354,9 +353,9 @@ var isHot = false;
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := require.New(t)
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -365,8 +364,7 @@ var isHot = false;
 	}
 }
 
-func TestCLIElseIfStatementsSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIElseIfStatementsSuccess() {
 
 	tests := []struct {
 		name       string
@@ -441,9 +439,9 @@ else { print "not eligible for drinking"; }
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := require.New(t)
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -452,8 +450,7 @@ else { print "not eligible for drinking"; }
 	}
 }
 
-func TestCLINestedIfStatementsSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLINestedIfStatementsSuccess() {
 
 	tests := []struct {
 		name       string
@@ -552,9 +549,9 @@ else print "foo";
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := require.New(t)
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -563,8 +560,7 @@ else print "foo";
 	}
 }
 
-func TestCLILogicalOrOperatorSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLILogicalOrOperatorSuccess() {
 
 	tests := []struct {
 		name       string
@@ -640,9 +636,9 @@ if (!isAdult) { print "not eligible for voting"; }
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := require.New(t)
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -651,8 +647,7 @@ if (!isAdult) { print "not eligible for voting"; }
 	}
 }
 
-func TestCLILogicalAndOperatorSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLILogicalAndOperatorSuccess() {
 
 	tests := []struct {
 		name       string
@@ -729,9 +724,9 @@ if (!isAdult) { print "not eligible for voting"; }
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := require.New(t)
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -740,8 +735,7 @@ if (!isAdult) { print "not eligible for voting"; }
 	}
 }
 
-func TestCLIWhileStatementsSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIWhileStatementsSuccess() {
 
 	tests := []struct {
 		name       string
@@ -819,9 +813,9 @@ while (index < n) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := require.New(t)
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -830,8 +824,7 @@ while (index < n) {
 	}
 }
 
-func TestCLIForStatementsSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIForStatementsSuccess() {
 
 	tests := []struct {
 		name       string
@@ -912,9 +905,9 @@ var baz = "after";
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := require.New(t)
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -923,8 +916,7 @@ var baz = "after";
 	}
 }
 
-func TestCLIIdentifierResolutionSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIIdentifierResolutionSuccess() {
 
 	tests := []struct {
 		name       string
@@ -1042,10 +1034,10 @@ outer();
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -1054,8 +1046,7 @@ outer();
 	}
 }
 
-func TestCLISelfInitializationContracts(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLISelfInitializationContracts() {
 
 	tests := []struct {
 		name       string
@@ -1143,10 +1134,10 @@ outer();
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(tt.wantExit, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -1155,8 +1146,7 @@ outer();
 	}
 }
 
-func TestCLIVariableRedeclarationErrorsExit65(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIVariableRedeclarationErrorsExit65() {
 
 	tests := []struct {
 		name       string
@@ -1223,10 +1213,10 @@ print a;
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(65, result.exitCode)
 			r.Empty(result.stdout)
@@ -1235,8 +1225,7 @@ print a;
 	}
 }
 
-func TestCLIInvalidReturnErrorsExit65(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIInvalidReturnErrorsExit65() {
 
 	tests := []struct {
 		name       string
@@ -1318,10 +1307,10 @@ if (true) {
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(65, result.exitCode)
 			r.Empty(result.stdout)
@@ -1330,8 +1319,7 @@ if (true) {
 	}
 }
 
-func TestCLIClassDeclarationsContracts(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIClassDeclarationsContracts() {
 
 	tests := []struct {
 		name       string
@@ -1393,10 +1381,10 @@ print "Function called successfully";
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(tt.wantExit, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -1405,8 +1393,7 @@ print "Function called successfully";
 	}
 }
 
-func TestCLIClassInstancesSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIClassInstancesSuccess() {
 
 	tests := []struct {
 		name       string
@@ -1480,10 +1467,10 @@ print "All heroes created!";
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -1492,8 +1479,7 @@ print "All heroes created!";
 	}
 }
 
-func TestCLIGettersAndSettersSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIGettersAndSettersSuccess() {
 
 	tests := []struct {
 		name       string
@@ -1584,10 +1570,10 @@ print gandalf.power;
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -1596,8 +1582,7 @@ print gandalf.power;
 	}
 }
 
-func TestCLIInstanceMethodsSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIInstanceMethodsSuccess() {
 
 	tests := []struct {
 		name       string
@@ -1713,10 +1698,10 @@ performHeroics(superman, heroClass);
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -1725,8 +1710,7 @@ performHeroics(superman, heroClass);
 	}
 }
 
-func TestCLIThisKeywordSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIThisKeywordSuccess() {
 
 	tests := []struct {
 		name       string
@@ -1819,10 +1803,10 @@ wizard.getSpellCaster()();
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -1831,8 +1815,7 @@ wizard.getSpellCaster()();
 	}
 }
 
-func TestCLIInvalidThisContracts(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIInvalidThisContracts() {
 
 	tests := []struct {
 		name       string
@@ -1898,11 +1881,11 @@ m(instance);
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			result := s.runCLI(tt.source)
 
+			r := s.Require()
 			r.Equal(tt.wantExit, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
 			r.Equal(tt.wantStderr, result.stderr)
@@ -1910,8 +1893,7 @@ m(instance);
 	}
 }
 
-func TestCLIConstructorCallsSuccess(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIConstructorCallsSuccess() {
 
 	tests := []struct {
 		name       string
@@ -2007,10 +1989,10 @@ myCar.describe();
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(0, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
@@ -2019,8 +2001,7 @@ myCar.describe();
 	}
 }
 
-func TestCLIReturnWithinConstructorsContracts(t *testing.T) {
-	binaryPath := buildCLIForTest(t)
+func (s *cliSuite) TestCLIReturnWithinConstructorsContracts() {
 
 	tests := []struct {
 		name       string
@@ -2095,10 +2076,10 @@ Foo();
 		},
 	}
 
-	r := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := runCLIForTest(t, binaryPath, tt.source)
+		s.Run(tt.name, func() {
+			r := s.Require()
+			result := s.runCLI(tt.source)
 
 			r.Equal(tt.wantExit, result.exitCode)
 			r.Equal(tt.wantStdout, result.stdout)
