@@ -1329,3 +1329,780 @@ if (true) {
 		})
 	}
 }
+
+func TestCLIClassDeclarationsContracts(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+		wantStderr string
+		wantExit   int
+	}{
+		{
+			name: "empty class declaration prints class name",
+			source: `// Class declaration with empty body
+class Spaceship {}
+print Spaceship;
+`,
+			wantStdout: "Spaceship\n",
+			wantExit:   0,
+		},
+		{
+			name: "multiple empty class declarations print class names",
+			source: `// Multiple class declarations with empty body
+class Robot {}
+class Wizard {}
+print Robot;
+print Wizard;
+print "Both classes successfully printed";
+`,
+			wantStdout: "Robot\nWizard\nBoth classes successfully printed\n",
+			wantExit:   0,
+		},
+		{
+			name: "block class is unavailable outside block",
+			source: `{
+  // Class declaration inside blocks should work
+  class Dinosaur {}
+  print "Inside block: Dinosaur exists";
+  print Dinosaur;
+}
+print "Accessing out-of-scope class:";
+print Dinosaur;  // expect runtime error
+`,
+			wantStdout: "Inside block: Dinosaur exists\nDinosaur\nAccessing out-of-scope class:\n",
+			wantStderr: "Undefined variable 'Dinosaur'.\n[line 8]\n",
+			wantExit:   70,
+		},
+		{
+			name: "class declared inside function",
+			source: `// Class declaration inside function should work
+fun foo() {
+  class Superhero {}
+  print "Class declared inside function";
+  print Superhero;
+}
+
+foo();
+print "Function called successfully";
+`,
+			wantStdout: "Class declared inside function\nSuperhero\nFunction called successfully\n",
+			wantExit:   0,
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(tt.wantExit, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Equal(tt.wantStderr, result.stderr)
+		})
+	}
+}
+
+func TestCLIClassInstancesSuccess(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+	}{
+		{
+			name: "class instantiation prints instance",
+			source: `// Class instantiation
+class Spaceship {}
+var falcon = Spaceship();
+print falcon;
+`,
+			wantStdout: "Spaceship instance\n",
+		},
+		{
+			name: "multiple instances of a class",
+			source: `// Instantiating multiple instances of a class
+// should work
+class Robot {}
+var r1 = Robot();
+var r2 = Robot();
+
+print "Created multiple robots:";
+print r1;
+print r2;
+`,
+			wantStdout: "Created multiple robots:\nRobot instance\nRobot instance\n",
+		},
+		{
+			name: "instances created in function are truthy",
+			source: `class Wizard {}
+class Dragon {}
+
+// Instantiating classes in a function should work
+fun createCharacters() {
+  var merlin = Wizard();
+  var smaug = Dragon();
+  print "Characters created in fantasy world:";
+  print merlin;
+  print smaug;
+  return merlin;
+}
+
+var mainCharacter = createCharacters();
+// An instance of a class should be truthy
+if (mainCharacter) {
+  print "The main character is:";
+  print mainCharacter;
+} else {
+  print "Failed to create a main character.";
+}
+`,
+			wantStdout: "Characters created in fantasy world:\nWizard instance\nDragon instance\nThe main character is:\nWizard instance\n",
+		},
+		{
+			name: "instances created in while loop",
+			source: `class Superhero {}
+
+var count = 0;
+while (count < 3) {
+  var hero = Superhero();
+  print "Hero created:";
+  print hero;
+  count = count + 1;
+}
+
+print "All heroes created!";
+`,
+			wantStdout: "Hero created:\nSuperhero instance\nHero created:\nSuperhero instance\nHero created:\nSuperhero instance\nAll heroes created!\n",
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(0, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Empty(result.stderr)
+		})
+	}
+}
+
+func TestCLIGettersAndSettersSuccess(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+	}{
+		{
+			name: "set and get instance properties",
+			source: `class Spaceship {}
+var falcon = Spaceship();
+
+// Setting properties on an instance should work
+falcon.name = "Millennium Falcon";
+falcon.speed = 75.5;
+
+// Getting properties on an instance should work
+print "Ship details:";
+print falcon.name;
+print falcon.speed;
+`,
+			wantStdout: "Ship details:\nMillennium Falcon\n75.5\n",
+		},
+		{
+			name: "conditional property access and assignment",
+			source: `class Robot {}
+var r2d2 = Robot();
+
+// Setting properties on an instance should work
+r2d2.model = "Astromech";
+r2d2.operational = true;
+
+// Getting properties on an instance should work
+if (r2d2.operational) {
+  print r2d2.model;
+  r2d2.mission = "Navigate hyperspace";
+  print r2d2.mission;
+}
+`,
+			wantStdout: "Astromech\nNavigate hyperspace\n",
+		},
+		{
+			name: "separate instances keep separate fields",
+			source: `class Superhero {}
+var batman = Superhero();
+var superman = Superhero();
+
+// Setting properties on an instance should work
+batman.name = "Batman";
+batman.called = 91;
+
+// Setting properties on an instance should work
+superman.name = "Superman";
+superman.called = 80;
+
+// Getting properties on an instance should work
+print "Times " + superman.name + " was called: ";
+print superman.called;
+print "Times " + batman.name + " was called: ";
+print batman.called;
+`,
+			wantStdout: "Times Superman was called: \n80\nTimes Batman was called: \n91\n",
+		},
+		{
+			name: "function updates instance properties",
+			source: `class Wizard {}
+var gandalf = Wizard();
+
+gandalf.color = "Grey";
+gandalf.power = nil;
+print gandalf.color;
+
+// functions should be able to accept class
+// instances and get or set properties on them
+fun promote(wizard) {
+  wizard.color = "White";
+  if (true) {
+    wizard.power = 100;
+  } else {
+    wizard.power = 0;
+  }
+}
+
+promote(gandalf);
+print gandalf.color;
+print gandalf.power;
+`,
+			wantStdout: "Grey\nWhite\n100\n",
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(0, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Empty(result.stderr)
+		})
+	}
+}
+
+func TestCLIInstanceMethodsSuccess(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+	}{
+		{
+			name: "call method on instance and temporary instance",
+			source: `class Robot {
+  beep() {
+    print "Beep boop!";
+  }
+}
+
+var r2d2 = Robot();
+// Calling a method on an instance should work
+r2d2.beep();
+
+// Calling a method on a class instance should work
+Robot().beep();
+`,
+			wantStdout: "Beep boop!\nBeep boop!\n",
+		},
+		{
+			name: "method can return its class",
+			source: `{
+  class Foo {
+    returnSelf() {
+      // Should be able to return the class itself
+      return Foo;
+    }
+  }
+
+  // Calling a method on an instance should work
+  print Foo().returnSelf();
+}
+`,
+			wantStdout: "Foo\n",
+		},
+		{
+			name: "methods accept parameters and can be stored",
+			source: `class Wizard {
+  castSpell(spell) {
+    // Methods should be able to accept a parameter
+    print "Casting a magical spell: " + spell;
+  }
+}
+
+class Dragon {
+  // Methods should be able to accept multiple
+  // parameters
+  breatheFire(fire, intensity) {
+    print "Breathing " + fire + " with intensity: "
+    + intensity;
+  }
+}
+
+var merlin = Wizard();
+var smaug = Dragon();
+
+if (false) {
+  var action = merlin.castSpell;
+  action("Fireball");
+} else {
+  var action = smaug.breatheFire;
+  action("Fire", "100");
+}
+`,
+			wantStdout: "Breathing Fire with intensity: 100\n",
+		},
+		{
+			name: "methods update instance parameters",
+			source: `class Superhero {
+  // Methods should be able to accept a parameter
+  useSpecialPower(hero) {
+    print "Using power: " + hero.specialPower;
+  }
+
+  // Methods should be able to accept a parameter
+  // of any type
+  hasSpecialPower(hero) {
+    return hero.specialPower;
+  }
+
+  // Methods should be able to accept class
+  // instances as parameters and then update their
+  // properties
+  giveSpecialPower(hero, power) {
+    hero.specialPower = power;
+  }
+}
+
+fun performHeroics(hero, superheroClass) {
+  if (superheroClass.hasSpecialPower(hero)) {
+    superheroClass.useSpecialPower(hero);
+  } else {
+    print "No special power available";
+  }
+}
+
+var superman = Superhero();
+var heroClass = Superhero();
+
+if (false) {
+  heroClass.giveSpecialPower(superman, "Flight");
+} else {
+  heroClass.giveSpecialPower(superman, "Strength");
+}
+
+performHeroics(superman, heroClass);
+`,
+			wantStdout: "Using power: Strength\n",
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(0, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Empty(result.stderr)
+		})
+	}
+}
+
+func TestCLIThisKeywordSuccess(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+	}{
+		{
+			name: "this is bound to instance",
+			source: `class Spaceship {
+  identify() {
+    // this should be bound to the instance
+    print this;
+  }
+}
+
+// Calling a method on a class instance should work
+Spaceship().identify();
+`,
+			wantStdout: "Spaceship instance\n",
+		},
+		{
+			name: "this accesses instance property",
+			source: `class Calculator {
+  add(a, b) {
+    // this should be bound to the instance
+    return a + b + this.memory;
+  }
+}
+
+var calc = Calculator();
+// Instance properties should be accessible using
+// the this keyword
+calc.memory = 11;
+print calc.add(26, 1);
+`,
+			wantStdout: "38\n",
+		},
+		{
+			name: "stored bound methods keep original receiver",
+			source: `class Animal {
+  makeSound() {
+    print this.sound;
+  }
+
+  identify() {
+    print this.species;
+  }
+}
+
+var dog = Animal();
+dog.sound = "Woof";
+dog.species = "Dog";
+
+var cat = Animal();
+cat.sound = "Meow";
+cat.species = "Cat";
+
+// The this keyword should be bound to the
+// class instance that the method is called on
+cat.makeSound = dog.makeSound;
+dog.identify = cat.identify;
+
+cat.makeSound(); // expect: Woof
+dog.identify(); // expect: Cat
+`,
+			wantStdout: "Woof\nCat\n",
+		},
+		{
+			name: "nested function returned from method captures this",
+			source: `class Wizard {
+  getSpellCaster() {
+    fun castSpell() {
+      print this;
+      print "Casting spell as " + this.name;
+    }
+
+    // Functions are first-class objects in Lox
+    return castSpell;
+  }
+}
+
+var wizard = Wizard();
+wizard.name = "Merlin";
+
+// Calling an instance method that returns a
+// function should work
+wizard.getSpellCaster()();
+`,
+			wantStdout: "Wizard instance\nCasting spell as Merlin\n",
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(0, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Empty(result.stderr)
+		})
+	}
+}
+
+func TestCLIInvalidThisContracts(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+		wantStderr string
+		wantExit   int
+	}{
+		{
+			name: "this outside class is compile error",
+			source: `// The this keyword used outside of a class
+// should be a compile error
+print this;
+`,
+			wantStderr: "[line 3] Error at 'this': Can't use 'this' outside of a class.\n",
+			wantExit:   65,
+		},
+		{
+			name: "this inside non-method function is compile error",
+			source: `// using this outside of a class shouldn't work
+fun notAMethod() {
+  print this; // expect compile error
+}
+`,
+			wantStderr: "[line 3] Error at 'this': Can't use 'this' outside of a class.\n",
+			wantExit:   65,
+		},
+		{
+			name: "this is not callable",
+			source: `class Person {
+  sayName() {
+    // this is not a callable object
+    print this(); // expect runtime error
+  }
+}
+Person().sayName();
+`,
+			wantStderr: "Can only call functions and classes.\n[line 4]\n",
+			wantExit:   70,
+		},
+		{
+			name: "this cannot access unset local variable as property",
+			source: `class Confused {
+  method() {
+    fun inner(instance) {
+      // this is a local variable
+      var feeling = "confused";
+      // Unless explicitly set, feeling can't be
+      // accessed using this keyword
+      print this.feeling; // expect runtime error
+    }
+    return inner;
+  }
+}
+
+var instance = Confused();
+var m = instance.method();
+// calling the function returned should work
+m(instance);
+`,
+			wantStderr: "[line 8] Error at 'feeling': Undefined property 'feeling'.\n",
+			wantExit:   70,
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(tt.wantExit, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Equal(tt.wantStderr, result.stderr)
+		})
+	}
+}
+
+func TestCLIConstructorCallsSuccess(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+	}{
+		{
+			name: "default constructor initializes properties",
+			source: `class Default {
+  // this is the constructor
+  init() {
+    // it should be able to set
+    // properties on the instance
+    this.x = "world";
+    this.y = 62;
+  }
+}
+
+// the constructor should be called
+// automatically  when the class is being
+// instantiated
+print Default().x;
+print Default().y;
+`,
+			wantStdout: "world\n62\n",
+		},
+		{
+			name: "constructor accepts parameters",
+			source: `class Robot {
+  // constructors should be able to accept
+  // one or more parameters
+  init(model, function) {
+    this.model = model;
+    this.function = function;
+  }
+}
+print Robot("R2-D2", "Astromech").model;
+`,
+			wantStdout: "R2-D2\n",
+		},
+		{
+			name: "constructor can be called from instance method lookup",
+			source: `class Counter {
+  init(startValue) {
+    if (startValue < 0) {
+      print "startValue can't be negative";
+      this.count = 0;
+    } else {
+      this.count = startValue;
+    }
+  }
+}
+
+// constructor is called automatically here
+var instance = Counter(-81);
+print instance.count;
+
+// it should be possible to call the constructor
+// on a class instance as well
+print instance.init(81).count;
+`,
+			wantStdout: "startValue can't be negative\n0\n81\n",
+		},
+		{
+			name: "constructors and methods across classes",
+			source: `class Vehicle {
+  init(type) {
+    this.type = type;
+  }
+}
+
+class Car {
+  init(make, model) {
+    this.make = make;
+    this.model = model;
+    this.wheels = "four";
+  }
+
+  describe() {
+    // expression across multiple lines should work
+    print this.make + " " + this.model +
+    " with " + this.wheels + " wheels";
+  }
+}
+
+var vehicle = Vehicle("Generic");
+print "Generic " + vehicle.type;
+
+var myCar = Car("Toyota", "Corolla");
+myCar.describe();
+`,
+			wantStdout: "Generic Generic\nToyota Corolla with four wheels\n",
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(0, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Empty(result.stderr)
+		})
+	}
+}
+
+func TestCLIReturnWithinConstructorsContracts(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+		wantStderr string
+		wantExit   int
+	}{
+		{
+			name: "constructor can return without value",
+			source: `class Person {
+  init() {
+    print "world";
+    // constructor should return nothing
+    return;
+  }
+}
+
+Person();
+`,
+			wantStdout: "world\n",
+			wantExit:   0,
+		},
+		{
+			name: "constructor cannot return this",
+			source: `class ThingDefault {
+  init() {
+    this.x = "foo";
+    this.y = 42;
+    // constructor should not return the instance
+    return this; // expect compile error
+  }
+}
+var out = ThingDefault();
+print out;
+`,
+			wantStderr: "[line 6] Error at 'return': Can't return a value from an initializer.\n",
+			wantExit:   65,
+		},
+		{
+			name: "constructor cannot return literal value",
+			source: `class Foo {
+  init() {
+    // constructor should not return anything
+    return "something"; // expect compile error
+  }
+}
+
+Foo();
+`,
+			wantStderr: "[line 4] Error at 'return': Can't return a value from an initializer.\n",
+			wantExit:   65,
+		},
+		{
+			name: "constructor cannot return callback result",
+			source: `class Foo {
+  init() {
+    // just calling the callback should've worked
+    // but returning it is not allowed
+    return this.callback(); // expect compile error
+  }
+
+  callback() {
+    return "callback";
+  }
+}
+
+Foo();
+`,
+			wantStderr: "[line 5] Error at 'return': Can't return a value from an initializer.\n",
+			wantExit:   65,
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(tt.wantExit, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Equal(tt.wantStderr, result.stderr)
+		})
+	}
+}
