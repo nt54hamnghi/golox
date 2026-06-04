@@ -1876,7 +1876,7 @@ var m = instance.method();
 // calling the function returned should work
 m(instance);
 `,
-			wantStderr: "[line 8] Error at 'feeling': Undefined property 'feeling'.\n",
+			wantStderr: "Undefined property 'feeling'.\n[line 8]\n",
 			wantExit:   70,
 		},
 	}

@@ -22,7 +22,10 @@ func (i LoxInstance) Get(name Token) (Object, error) {
 		return method.bind(i), nil
 	}
 
-	return nil, ErrorAtToken(name, "Undefined property '"+name.Lexeme+"'.")
+	return nil, RuntimeError{
+		name,
+		"Undefined property '" + name.Lexeme + "'.",
+	}
 }
 
 func (i LoxInstance) Set(name Token, value Object) {
