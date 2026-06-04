@@ -332,7 +332,7 @@ func (r *Resolver) VisitVariableExpr(expr Variable) (any, error) {
 			// to be an error.
 			return nil, ErrorAtToken(
 				expr.Name,
-				"Can't read local variable in its own initializer",
+				"Can't read local variable in its own initializer.",
 			)
 		}
 	}

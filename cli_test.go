@@ -922,3 +922,410 @@ var baz = "after";
 		})
 	}
 }
+
+func TestCLIIdentifierResolutionSuccess(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+	}{
+		{
+			name: "function keeps global variable binding",
+			source: `// This variable is used in the function ` + "`f`" + ` below.
+var variable = "global";
+
+{
+  fun f() {
+    print variable;
+  }
+
+  f(); // this should print "global"
+
+  // This variable declaration shouldn't affect
+  // the usage in ` + "`f`" + ` above.
+  var variable = "local";
+
+  f(); // this should still print "global"
+}
+`,
+			wantStdout: "global\nglobal\n",
+		},
+		{
+			name: "function keeps global function binding",
+			source: `// This function is used in the function ` + "`f`" + ` below.
+fun global() {
+  print "global";
+}
+
+{
+  fun f() {
+    global();
+  }
+
+  f(); // this should print "global"
+
+  // This function declaration shouldn't affect
+  // the usage in ` + "`f`" + ` above.
+  fun global() {
+    print "local";
+  }
+
+  f(); // this should also print "global"
+}
+`,
+			wantStdout: "global\nglobal\n",
+		},
+		{
+			name: "inner function captures closest outer variable",
+			source: `var x = "global";
+
+fun outer() {
+  var x = "outer";
+
+  fun middle() {
+    // The ` + "`inner`" + ` function should capture the
+    // variable from the closest outer
+    // scope, which is the ` + "`outer`" + ` function's
+    // scope.
+    fun inner() {
+      print x; // Should capture "outer"
+    }
+
+    inner(); // Should print "outer"
+
+    // This variable declaration shouldn't affect
+    // the usage in ` + "`inner`" + ` above.
+    var x = "middle";
+
+    inner(); // Should still print "outer"
+  }
+
+  middle();
+}
+
+outer();
+`,
+			wantStdout: "outer\nouter\n",
+		},
+		{
+			name: "counter keeps global count binding",
+			source: `var count = 0;
+
+{
+  // The ` + "`counter`" + ` function should use the ` + "`count`" + `
+  // variable from the
+  // global scope.
+  fun makeCounter() {
+    fun counter() {
+      // This should increment the ` + "`count`" + `
+      // variable from the global scope.
+      count = count + 1;
+      print count;
+    }
+    return counter;
+  }
+
+  var counter1 = makeCounter();
+  counter1(); // Should print 1
+  counter1(); // Should print 2
+
+  // This variable declaration shouldn't affect
+  // our counter.
+  var count = 0;
+
+  counter1(); // Should print 3
+}
+`,
+			wantStdout: "1\n2\n3\n",
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(0, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Empty(result.stderr)
+		})
+	}
+}
+
+func TestCLISelfInitializationContracts(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStdout string
+		wantStderr string
+		wantExit   int
+	}{
+		{
+			name: "global redeclaration can read previous value",
+			source: `// First declaration of variable 'a' in global
+// scope
+var a = "value";
+
+// Redeclaring 'a' with its own value should be
+// allowed in global scope
+var a = a;
+print a; // this should print "value"
+`,
+			wantStdout: "value\n",
+			wantExit:   0,
+		},
+		{
+			name: "local initializer cannot read itself",
+			source: `// Declare outer variable 'a' in global scope
+var a = "outer";
+
+{
+  // Attempting to declare local variable'a'
+  // initialized with itself
+  var a = a; // expect compile error
+}
+`,
+			wantStderr: "[line 7] Error at 'a': Can't read local variable in its own initializer.\n",
+			wantExit:   65,
+		},
+		{
+			name: "local initializer cannot read itself through call argument",
+			source: `// Helper function that simply returns its argument
+fun returnArg(arg) {
+  return arg;
+}
+
+// Declare global variable 'b'
+var b = "global";
+
+{
+  // Local variable declaration
+  var a = "first";
+
+  // Attempting to initialize local variable 'b'
+  // using local variable 'b'
+  // through a function call
+  var b = returnArg(b); // expect compile error
+  print b;
+}
+
+var b = b + " updated";
+print b;
+`,
+			wantStderr: "[line 16] Error at 'b': Can't read local variable in its own initializer.\n",
+			wantExit:   65,
+		},
+		{
+			name: "function local initializer cannot read itself",
+			source: `fun outer() {
+  // Declare variable 'a' in outer function scope
+  var a = "outer";
+
+  // Inner function with its own scope
+  fun inner() {
+    // Attempting to declare local 'a' initialized
+    // with itself
+    var a = a; // expect compile error
+    print a;
+  }
+
+  inner();
+}
+
+outer();
+`,
+			wantStderr: "[line 9] Error at 'a': Can't read local variable in its own initializer.\n",
+			wantExit:   65,
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(tt.wantExit, result.exitCode)
+			r.Equal(tt.wantStdout, result.stdout)
+			r.Equal(tt.wantStderr, result.stderr)
+		})
+	}
+}
+
+func TestCLIVariableRedeclarationErrorsExit65(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStderr string
+	}{
+		{
+			name: "local variable redeclared in same scope",
+			source: `{
+  var a = "value";
+
+  // Attempting to redeclare 'a' in the same scope
+  var a = "other"; // expect compile error
+}
+`,
+			wantStderr: "[line 5] Error at 'a': Already a variable with this name in this scope.\n",
+		},
+		{
+			name: "parameter name redeclared as local variable",
+			source: `// Function parameters are considered variables in
+// the function's scope
+fun foo(a) {
+  // Attempting to declare a variable with same
+  // name as parameter
+  var a; // expect compile error
+}
+`,
+			wantStderr: "[line 6] Error at 'a': Already a variable with this name in this scope.\n",
+		},
+		{
+			name: "duplicate parameter names",
+			source: `// Function parameters must have unique names
+fun foo(arg, arg) { // expect compile error
+  // Function body is irrelevant as the error
+  // occurs in parameter list
+  "body";
+}
+`,
+			wantStderr: "[line 2] Error at 'arg': Already a variable with this name in this scope.\n",
+		},
+		{
+			name: "global redeclarations allowed until local redeclaration fails",
+			source: `// Due to the compile error on line 17
+// Nothing should be printed
+var a = "1";
+print a;
+
+var a;
+print a;
+
+var a = "2";
+print a;
+
+{
+  // First declaration in local scope
+  var a = "1";
+
+  // Attempting to redeclare in local scope
+  var a = "2"; // This should be a compile error
+  print a;
+}
+`,
+			wantStderr: "[line 17] Error at 'a': Already a variable with this name in this scope.\n",
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(65, result.exitCode)
+			r.Empty(result.stdout)
+			r.Equal(tt.wantStderr, result.stderr)
+		})
+	}
+}
+
+func TestCLIInvalidReturnErrorsExit65(t *testing.T) {
+	binaryPath := buildCLIForTest(t)
+
+	tests := []struct {
+		name       string
+		source     string
+		wantStderr string
+	}{
+		{
+			name: "top-level return after function declaration",
+			source: `fun foo() {
+  // Return statements are allowed within function
+  // scope
+  return "at function scope is ok";
+}
+
+// Return statements are not allowed at the
+// top-level
+return; // expect compile error
+`,
+			wantStderr: "[line 9] Error at 'return': Can't return from top-level code.\n",
+		},
+		{
+			name: "return inside top-level conditional",
+			source: `fun foo() {
+  if (true) {
+    return "early return";
+  }
+
+  for (var i = 0; i < 10; i = i + 1) {
+    return "loop return";
+  }
+}
+
+if (true) {
+  return "conditional return";
+  // expect compile error
+}
+`,
+			wantStderr: "[line 12] Error at 'return': Can't return from top-level code.\n",
+		},
+		{
+			name: "return inside top-level block",
+			source: `{
+  // Return statements are not allowed in
+  // top-level blocks
+  return "not allowed in a block either";
+  // expect compile error
+}
+
+fun allowed() {
+  if (true) {
+    return "this is fine";
+  }
+  return;
+}
+`,
+			wantStderr: "[line 4] Error at 'return': Can't return from top-level code.\n",
+		},
+		{
+			name: "return inside non-function top-level branch",
+			source: `fun outer() {
+  fun inner() {
+    return "ok";
+  }
+
+  return "also ok";
+}
+
+if (true) {
+  fun nested() {
+    return;
+  }
+
+  // Return statements are not allowed outside of
+  // functions
+  return "not ok"; // expect compile error
+}
+`,
+			wantStderr: "[line 16] Error at 'return': Can't return from top-level code.\n",
+		},
+	}
+
+	r := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runCLIForTest(t, binaryPath, tt.source)
+
+			r.Equal(65, result.exitCode)
+			r.Empty(result.stdout)
+			r.Equal(tt.wantStderr, result.stderr)
+		})
+	}
+}
