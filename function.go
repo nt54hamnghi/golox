@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"os"
 )
 
 type LoxFunction struct {
@@ -31,7 +30,7 @@ func (lf LoxFunction) bind(this LoxInstance) LoxFunction {
 }
 
 // Call implements [LoxCallable].
-func (lf LoxFunction) Call(interpreter *Interpreter, args []Object) Object {
+func (lf LoxFunction) Call(interpreter *Interpreter, args []Object) (Object, error) {
 	environment := NewEnclosedEnvinronment(&lf.closure)
 
 	for i, p := range lf.declaration.Params {
@@ -45,19 +44,19 @@ func (lf LoxFunction) Call(interpreter *Interpreter, args []Object) Object {
 		if lf.isInitializer {
 			value = lf.closure.GetAt(0, "this")
 		}
-		return value
+		return value, nil
 	}
 
 	var returnThis ReturnThis
 	if ok := errors.As(err, &returnThis); ok {
 		value = returnThis.Value
 	} else {
-		fmt.Fprintln(os.Stderr, err.Error())
+		return nil, err
 	}
 	if lf.isInitializer {
 		value = lf.closure.GetAt(0, "this")
 	}
-	return value
+	return value, nil
 }
 
 // Arity implements [LoxCallable].
