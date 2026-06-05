@@ -14,6 +14,11 @@ func (cls *LoxClass) FindMethod(name string) (LoxFunction, bool) {
 	if method, ok := cls.methods[name]; ok {
 		return method, true
 	}
+
+	if cls.Superclass != nil {
+		return cls.Superclass.FindMethod(name)
+	}
+
 	return LoxFunction{}, false
 }
 
