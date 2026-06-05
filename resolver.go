@@ -92,6 +92,17 @@ func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
 	r.currentClassType = KLASS
 	defer func() { r.currentClassType = enclosingClassType }()
 
+	if stmt.Superclass != nil {
+		if stmt.Superclass.Name.Lexeme == stmt.Name.Lexeme {
+			return nil, ErrorAtToken(stmt.Superclass.Name, "A class can't inherit from itself.")
+		}
+
+		_, err := r.resolveExpr(stmt.Superclass)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	r.declare(stmt.Name)
 	r.define(stmt.Name)
 

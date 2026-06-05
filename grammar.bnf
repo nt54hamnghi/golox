@@ -26,7 +26,8 @@ ifStmt         → "if" "(" expression ")" statement
 
 block          → "{" declaration* "}" ;
 
-classDecl      → "class" IDENTIFIER "{" function* "}";
+classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )?
+                 "{" function* "}" ;
 
 funDecl        → "fun" function ;
 function       → IDENTIFIER "(" parameters? ")" block ;

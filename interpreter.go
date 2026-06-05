@@ -78,7 +78,21 @@ func (i *Interpreter) VisitClassStmt(stmt Class) (any, error) {
 		isInitializer := method.Name.Lexeme == "init"
 		methods[method.Name.Lexeme] = NewLoxFunction(method, i.environment, isInitializer)
 	}
-	class := NewLoxClass(stmt.Name.Lexeme, methods)
+
+	var superclass *LoxClass
+	if stmt.Superclass != nil {
+		obj, err := i.evaluate(stmt.Superclass)
+		if err != nil {
+			return nil, err
+		}
+
+		var ok bool
+		if superclass, ok = obj.(*LoxClass); !ok {
+			return nil, RuntimeError{stmt.Superclass.Name, "Superclass must be a class."}
+		}
+	}
+
+	class := NewLoxClass(stmt.Name.Lexeme, superclass, methods)
 	i.environment.Assign(stmt.Name, class)
 	return nil, nil
 }

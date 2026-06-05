@@ -46,12 +46,24 @@ func (p *Parser) declaration() (Stmt, error) {
 	return p.statement()
 }
 
-// classDecl → "class" IDENTIFIER "{" function* "}";
+// classDecl → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}";
 func (p *Parser) classDeclaration() (Stmt, error) {
-	name, err := p.consume(IDENTIFIER, "Expect class name.")
+	name, err := p.consume(IDENTIFIER, "Expect superclass name.")
 	if err != nil {
 		return nil, err
 	}
+
+	var superclass *Variable
+	if p.match(LESS) {
+		name, err := p.consume(IDENTIFIER, "Expect class name.")
+		if err != nil {
+			return nil, err
+		}
+		_ = name
+		variable := NewVariable(name)
+		superclass = &variable
+	}
+
 	if _, err = p.consume(LEFT_BRACE, "Expect '{' before class body."); err != nil {
 		return nil, err
 	}
@@ -73,7 +85,7 @@ func (p *Parser) classDeclaration() (Stmt, error) {
 		return nil, err
 	}
 
-	return NewClass(name, methods), nil
+	return NewClass(name, superclass, methods), nil
 }
 
 func (p *Parser) function(kind string) (Stmt, error) {

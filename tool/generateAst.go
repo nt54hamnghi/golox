@@ -81,6 +81,7 @@ func main() {
 		}},
 		{"Class", []field{
 			{"Name", "Token"},
+			{"Superclass", "*Variable"},
 			{"Methods", "[]Function"},
 		}},
 		{"Function", []field{
