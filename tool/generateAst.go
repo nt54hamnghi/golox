@@ -36,6 +36,10 @@ func main() {
 			{"Name", "Token"},
 			{"Value", "Expr"},
 		}},
+		{"Super", []field{
+			{"Keyword", "Token"},
+			{"Method", "Token"},
+		}},
 		{"This", []field{
 			{"Keyword", "Token"},
 		}},

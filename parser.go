@@ -578,7 +578,10 @@ func (p *Parser) finishCall(callee Expr) (Expr, error) {
 	return NewCall(callee, paren, args), nil
 }
 
-// primary → NUMBER | STRING | "true" | "false" | "nil"| "(" expression ")" | IDENTIFIER ;
+// primary → "true" | "false" | "nil" | "this"
+//
+//	| NUMBER | STRING | IDENTIFIER | "(" expression ")"
+//	| "super" "." IDENTIFIER ;
 func (p *Parser) primary() (Expr, error) {
 	if p.match(FALSE) {
 		return NewLiteral(false), nil
@@ -602,6 +605,19 @@ func (p *Parser) primary() (Expr, error) {
 			return nil, err
 		}
 		return NewGrouping(expr), nil
+	}
+
+	if p.match(SUPER) {
+		keyword := p.previous()
+		_, err := p.consume(DOT, "Expect '.' after 'super'.")
+		if err != nil {
+			return nil, err
+		}
+		method, err := p.consume(IDENTIFIER, "Expect superclass method name.")
+		if err != nil {
+			return nil, err
+		}
+		return NewSuper(keyword, method), nil
 	}
 
 	if p.match(THIS) {

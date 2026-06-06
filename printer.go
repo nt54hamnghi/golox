@@ -31,6 +31,11 @@ func (p AstPrinter) VisitSetExpr(expr Set) (any, error) {
 	panic("unimplemented")
 }
 
+// VisitSuperExpr implements [ExprVisitor].
+func (p AstPrinter) VisitSuperExpr(expr Super) (any, error) {
+	panic("unimplemented")
+}
+
 // VisitThisExpr implements [ExprVisitor].
 func (p AstPrinter) VisitThisExpr(expr This) (any, error) {
 	panic("unimplemented")

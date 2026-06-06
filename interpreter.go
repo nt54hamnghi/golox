@@ -73,11 +73,6 @@ func (i *Interpreter) VisitBlockStmt(stmt Block) (any, error) {
 // VisitClassStmt implements [StmtVisitor].
 func (i *Interpreter) VisitClassStmt(stmt Class) (any, error) {
 	i.environment.Define(stmt.Name.Lexeme, nil)
-	methods := make(map[string]LoxFunction)
-	for _, method := range stmt.Methods {
-		isInitializer := method.Name.Lexeme == "init"
-		methods[method.Name.Lexeme] = NewLoxFunction(method, i.environment, isInitializer)
-	}
 
 	var superclass *LoxClass
 	if stmt.Superclass != nil {
@@ -90,9 +85,23 @@ func (i *Interpreter) VisitClassStmt(stmt Class) (any, error) {
 		if superclass, ok = obj.(*LoxClass); !ok {
 			return nil, RuntimeError{stmt.Superclass.Name, "Superclass must be a class."}
 		}
+
+		current := i.environment
+		i.environment = NewEnclosedEnvinronment(&current)
+		i.environment.Define("super", superclass)
+	}
+
+	methods := make(map[string]LoxFunction)
+	for _, method := range stmt.Methods {
+		isInitializer := method.Name.Lexeme == "init"
+		methods[method.Name.Lexeme] = NewLoxFunction(method, i.environment, isInitializer)
 	}
 
 	class := NewLoxClass(stmt.Name.Lexeme, superclass, methods)
+
+	if stmt.Superclass != nil {
+		i.environment = *i.environment.enclosing
+	}
 	i.environment.Assign(stmt.Name, class)
 	return nil, nil
 }
@@ -279,6 +288,36 @@ func (i *Interpreter) VisitSetExpr(expr Set) (any, error) {
 	instance.Set(expr.Name, value)
 
 	return value, nil
+}
+
+// VisitSuperExpr implements [ExprVisitor].
+func (i *Interpreter) VisitSuperExpr(expr Super) (any, error) {
+	distance, ok := i.locals[expr.Id()]
+	if !ok {
+		panic("unresolved super expression")
+	}
+
+	obj := i.environment.GetAt(distance, "super")
+	superclass, ok := obj.(*LoxClass)
+	if !ok {
+		panic(fmt.Sprintf("expected *LoxClass bound to 'super', got %T", obj))
+	}
+
+	obj = i.environment.GetAt(distance-1, "this")
+	this, ok := obj.(LoxInstance)
+	if !ok {
+		panic(fmt.Sprintf("expected LoxInstance bound to 'this', got %T", obj))
+	}
+
+	method, ok := superclass.FindMethod(expr.Method.Lexeme)
+	if !ok {
+		return nil, RuntimeError{
+			expr.Method,
+			fmt.Sprintf("Undefined property '%s'.", expr.Method.Lexeme),
+		}
+	}
+
+	return method.bind(this), nil
 }
 
 // VisitThisExpr implements [ExprVisitor].
