@@ -59,7 +59,6 @@ func (p *Parser) classDeclaration() (Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		_ = name
 		variable := NewVariable(name)
 		superclass = &variable
 	}
