@@ -1,7 +1,10 @@
-package main
+package interpreter
 
 import (
 	"fmt"
+
+	"github.com/nt54hamnghi/golox/internal/errors"
+	"github.com/nt54hamnghi/golox/internal/scanner/token"
 )
 
 type Environment struct {
@@ -35,7 +38,7 @@ func (e *Environment) Define(name string, value Object) {
 // It first checks the current environment, then walks outward through enclosing scopes.
 // If no scope defines the variable, it returns a runtime error.
 // Unlike Define, this method does not create new bindings.
-func (e *Environment) Assign(name Token, value Object) error {
+func (e *Environment) Assign(name token.Token, value Object) error {
 	if _, exist := e.values[name.Lexeme]; exist {
 		e.values[name.Lexeme] = value
 		return nil
@@ -48,7 +51,7 @@ func (e *Environment) Assign(name Token, value Object) error {
 	return undefinedVariable(name)
 }
 
-func (e Environment) AssignAt(distance int, name Token, value Object) error {
+func (e Environment) AssignAt(distance int, name token.Token, value Object) error {
 	e.ancestor(distance).values[name.Lexeme] = value
 	return nil
 }
@@ -66,7 +69,7 @@ func (e Environment) AssignAt(distance int, name Token, value Object) error {
 //
 //	// no error yet: y is referenced, but f has not been called
 //	fun f() { print y; }
-func (e Environment) Get(name Token) (Object, error) {
+func (e Environment) Get(name token.Token) (Object, error) {
 	if obj, exist := e.values[name.Lexeme]; exist {
 		return obj, nil
 	}
@@ -90,9 +93,9 @@ func (e Environment) ancestor(distance int) Environment {
 	return curr
 }
 
-func undefinedVariable(name Token) RuntimeError {
-	return RuntimeError{
+func undefinedVariable(name token.Token) errors.RuntimeError {
+	return errors.RuntimeErrorAtToken(
 		name,
 		fmt.Sprintf("Undefined variable '%s'.", name.Lexeme),
-	}
+	)
 }

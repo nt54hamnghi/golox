@@ -1,6 +1,12 @@
-package main
+package interpreter
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/nt54hamnghi/golox/internal/errors"
+	"github.com/nt54hamnghi/golox/internal/parser"
+	"github.com/nt54hamnghi/golox/internal/scanner/token"
+)
 
 type Object any
 
@@ -12,10 +18,10 @@ type Interpreter struct {
 	environment Environment
 	// A map of variable usages (via node identity) to
 	// their resolved location in the environment stack.
-	locals map[NodeID]int
+	locals map[parser.NodeID]int
 }
 
-func (i *Interpreter) resolve(expr Expr, depth int) {
+func (i *Interpreter) Resolve(expr parser.Expr, depth int) {
 	i.locals[expr.Id()] = depth
 }
 
@@ -24,11 +30,11 @@ func NewInterpreter() Interpreter {
 	return Interpreter{
 		// the interpreter starts with the global environment as its current environment.
 		environment: globals,
-		locals:      make(map[NodeID]int),
+		locals:      make(map[parser.NodeID]int),
 	}
 }
 
-func (i *Interpreter) Interpret(prog []Stmt) error {
+func (i *Interpreter) Interpret(prog []parser.Stmt) error {
 	for _, stmt := range prog {
 		_, err := i.execute(stmt)
 		if err != nil {
@@ -39,15 +45,15 @@ func (i *Interpreter) Interpret(prog []Stmt) error {
 	return nil
 }
 
-func (i *Interpreter) execute(stmt Stmt) (any, error) {
+func (i *Interpreter) execute(stmt parser.Stmt) (any, error) {
 	return stmt.Accept(i)
 }
 
-func (i *Interpreter) evaluate(expr Expr) (Object, error) {
+func (i *Interpreter) evaluate(expr parser.Expr) (Object, error) {
 	return expr.Accept(i)
 }
 
-func (i *Interpreter) executeBlock(stmts []Stmt, environment Environment) (any, error) {
+func (i *Interpreter) executeBlock(stmts []parser.Stmt, environment Environment) (any, error) {
 	current := i.environment
 	i.environment = environment
 	defer func() {
@@ -63,15 +69,15 @@ func (i *Interpreter) executeBlock(stmts []Stmt, environment Environment) (any, 
 	return nil, nil
 }
 
-// VisitBlockStmt implements [StmtVisitor].
-func (i *Interpreter) VisitBlockStmt(stmt Block) (any, error) {
+// VisitBlockStmt implements [parser.StmtVisitor].
+func (i *Interpreter) VisitBlockStmt(stmt parser.Block) (any, error) {
 	current := i.environment
 	inner := NewEnclosedEnvinronment(&current)
 	return i.executeBlock(stmt.Stmts, inner)
 }
 
-// VisitClassStmt implements [StmtVisitor].
-func (i *Interpreter) VisitClassStmt(stmt Class) (any, error) {
+// VisitClassStmt implements [parser.StmtVisitor].
+func (i *Interpreter) VisitClassStmt(stmt parser.Class) (any, error) {
 	i.environment.Define(stmt.Name.Lexeme, nil)
 
 	var superclass *LoxClass
@@ -83,7 +89,10 @@ func (i *Interpreter) VisitClassStmt(stmt Class) (any, error) {
 
 		var ok bool
 		if superclass, ok = obj.(*LoxClass); !ok {
-			return nil, RuntimeError{stmt.Superclass.Name, "Superclass must be a class."}
+			return nil, errors.RuntimeErrorAtToken(
+				stmt.Superclass.Name,
+				"Superclass must be a class.",
+			)
 		}
 
 		current := i.environment
@@ -106,8 +115,8 @@ func (i *Interpreter) VisitClassStmt(stmt Class) (any, error) {
 	return nil, nil
 }
 
-// VisitWhileStmt implements [StmtVisitor].
-func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
+// VisitWhileStmt implements [parser.StmtVisitor].
+func (i *Interpreter) VisitWhileStmt(stmt parser.While) (any, error) {
 	for {
 		condition, err := i.evaluate(stmt.Condition)
 		if err != nil {
@@ -122,15 +131,15 @@ func (i *Interpreter) VisitWhileStmt(stmt While) (any, error) {
 	}
 }
 
-// VisitFunctionStmt implements [StmtVisitor].
-func (i *Interpreter) VisitFunctionStmt(stmt Function) (any, error) {
+// VisitFunctionStmt implements [parser.StmtVisitor].
+func (i *Interpreter) VisitFunctionStmt(stmt parser.Function) (any, error) {
 	function := NewLoxFunction(stmt, i.environment, false)
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil, nil
 }
 
-// VisitReturnStmt implements [StmtVisitor].
-func (i *Interpreter) VisitReturnStmt(stmt Return) (any, error) {
+// VisitReturnStmt implements [parser.StmtVisitor].
+func (i *Interpreter) VisitReturnStmt(stmt parser.Return) (any, error) {
 	var (
 		value Object
 		err   error
@@ -147,8 +156,8 @@ func (i *Interpreter) VisitReturnStmt(stmt Return) (any, error) {
 	return nil, ReturnThis{value}
 }
 
-// VisitVarStmt implements [StmtVisitor].
-func (i *Interpreter) VisitVarStmt(stmt Var) (any, error) {
+// VisitVarStmt implements [parser.StmtVisitor].
+func (i *Interpreter) VisitVarStmt(stmt parser.Var) (any, error) {
 	var (
 		value Object
 		err   error
@@ -165,8 +174,8 @@ func (i *Interpreter) VisitVarStmt(stmt Var) (any, error) {
 	return nil, nil
 }
 
-// VisitIfStmt implements [StmtVisitor].
-func (i *Interpreter) VisitIfStmt(stmt If) (any, error) {
+// VisitIfStmt implements [parser.StmtVisitor].
+func (i *Interpreter) VisitIfStmt(stmt parser.If) (any, error) {
 	condition, err := i.evaluate(stmt.Condition)
 	if err != nil {
 		return nil, err
@@ -181,8 +190,8 @@ func (i *Interpreter) VisitIfStmt(stmt If) (any, error) {
 	return nil, nil
 }
 
-// VisitExpressionStmt implements [StmtVisitor].
-func (i *Interpreter) VisitExpressionStmt(stmt Expression) (any, error) {
+// VisitExpressionStmt implements [parser.StmtVisitor].
+func (i *Interpreter) VisitExpressionStmt(stmt parser.Expression) (any, error) {
 	_, err := i.evaluate(stmt.Expression)
 	if err != nil {
 		return nil, err
@@ -190,8 +199,8 @@ func (i *Interpreter) VisitExpressionStmt(stmt Expression) (any, error) {
 	return nil, nil
 }
 
-// VisitPrintStmt implements [StmtVisitor].
-func (i *Interpreter) VisitPrintStmt(stmt Print) (any, error) {
+// VisitPrintStmt implements [parser.StmtVisitor].
+func (i *Interpreter) VisitPrintStmt(stmt parser.Print) (any, error) {
 	v, err := i.evaluate(stmt.Expression)
 	if err != nil {
 		return nil, err
@@ -200,8 +209,8 @@ func (i *Interpreter) VisitPrintStmt(stmt Print) (any, error) {
 	return nil, nil
 }
 
-// VisitAssignmentExpr implements [ExprVisitor].
-func (i *Interpreter) VisitAssignmentExpr(expr Assignment) (any, error) {
+// VisitAssignmentExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitAssignmentExpr(expr parser.Assignment) (any, error) {
 
 	value, err := i.evaluate(expr.Value)
 	if err != nil {
@@ -221,8 +230,8 @@ func (i *Interpreter) VisitAssignmentExpr(expr Assignment) (any, error) {
 	return value, nil
 }
 
-// VisitCallExpr implements [ExprVisitor].
-func (i *Interpreter) VisitCallExpr(expr Call) (any, error) {
+// VisitCallExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitCallExpr(expr parser.Call) (any, error) {
 	callee, err := i.evaluate(expr.Callee)
 	if err != nil {
 		return nil, err
@@ -239,23 +248,23 @@ func (i *Interpreter) VisitCallExpr(expr Call) (any, error) {
 
 	fun, ok := callee.(Callable)
 	if !ok {
-		return nil, RuntimeError{
+		return nil, errors.RuntimeErrorAtToken(
 			expr.Paren,
 			"Can only call functions and classes.",
-		}
+		)
 	}
 	if len(args) != fun.Arity() {
-		return nil, RuntimeError{
+		return nil, errors.RuntimeErrorAtToken(
 			expr.Paren,
 			fmt.Sprintf("Expected %d arguments but got %d.", fun.Arity(), len(args)),
-		}
+		)
 	}
 
 	return fun.Call(i, args)
 }
 
-// VisitGetExpr implements [ExprVisitor].
-func (i *Interpreter) VisitGetExpr(expr Get) (any, error) {
+// VisitGetExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitGetExpr(expr parser.Get) (any, error) {
 	obj, err := i.evaluate(expr.Object)
 	if err != nil {
 		return nil, err
@@ -263,14 +272,17 @@ func (i *Interpreter) VisitGetExpr(expr Get) (any, error) {
 
 	instance, ok := obj.(LoxInstance)
 	if !ok {
-		return nil, ErrorAtToken(expr.Name, "Only instances have properties.")
+		return nil, errors.RuntimeErrorAtToken(
+			expr.Name,
+			"Only instances have properties.",
+		)
 	}
 
 	return instance.Get(expr.Name)
 }
 
-// VisitSetExpr implements [ExprVisitor].
-func (i *Interpreter) VisitSetExpr(expr Set) (any, error) {
+// VisitSetExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitSetExpr(expr parser.Set) (any, error) {
 	obj, err := i.evaluate(expr.Object)
 	if err != nil {
 		return nil, err
@@ -278,7 +290,10 @@ func (i *Interpreter) VisitSetExpr(expr Set) (any, error) {
 
 	instance, ok := obj.(LoxInstance)
 	if !ok {
-		return nil, ErrorAtToken(expr.Name, "Only instances have fields.")
+		return nil, errors.RuntimeErrorAtToken(
+			expr.Name,
+			"Only instances have fields.",
+		)
 	}
 
 	value, err := i.evaluate(expr.Value)
@@ -290,8 +305,8 @@ func (i *Interpreter) VisitSetExpr(expr Set) (any, error) {
 	return value, nil
 }
 
-// VisitSuperExpr implements [ExprVisitor].
-func (i *Interpreter) VisitSuperExpr(expr Super) (any, error) {
+// VisitSuperExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitSuperExpr(expr parser.Super) (any, error) {
 	distance, ok := i.locals[expr.Id()]
 	if !ok {
 		panic("unresolved super expression")
@@ -311,29 +326,29 @@ func (i *Interpreter) VisitSuperExpr(expr Super) (any, error) {
 
 	method, ok := superclass.FindMethod(expr.Method.Lexeme)
 	if !ok {
-		return nil, RuntimeError{
+		return nil, errors.RuntimeErrorAtToken(
 			expr.Method,
 			fmt.Sprintf("Undefined property '%s'.", expr.Method.Lexeme),
-		}
+		)
 	}
 
 	return method.bind(this), nil
 }
 
-// VisitThisExpr implements [ExprVisitor].
-func (i *Interpreter) VisitThisExpr(expr This) (any, error) {
+// VisitThisExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitThisExpr(expr parser.This) (any, error) {
 	return i.lookUpVariable(expr.Keyword, expr)
 }
 
-// VisitVariableExpr implements [ExprVisitor].
-func (i Interpreter) VisitVariableExpr(expr Variable) (any, error) {
+// VisitVariableExpr implements [parser.ExprVisitor].
+func (i Interpreter) VisitVariableExpr(expr parser.Variable) (any, error) {
 	return i.lookUpVariable(expr.Name, expr)
 }
 
 // lookUpVariable finds the resolved distance in the locals map.
 // If we don’t find a distance, it must be global, so we look it up
 // directly in the global environment.
-func (i Interpreter) lookUpVariable(name Token, expr Expr) (any, error) {
+func (i Interpreter) lookUpVariable(name token.Token, expr parser.Expr) (any, error) {
 	if distance, ok := i.locals[expr.Id()]; ok {
 		return i.environment.GetAt(distance, name.Lexeme), nil
 	} else {
@@ -341,24 +356,24 @@ func (i Interpreter) lookUpVariable(name Token, expr Expr) (any, error) {
 	}
 }
 
-// VisitLiteralExpr implements [ExprVisitor].
-func (i Interpreter) VisitLiteralExpr(expr Literal) (any, error) {
+// VisitLiteralExpr implements [parser.ExprVisitor].
+func (i Interpreter) VisitLiteralExpr(expr parser.Literal) (any, error) {
 	return expr.Value, nil
 }
 
-// VisitLogicalExpr implements [ExprVisitor].
-func (i *Interpreter) VisitLogicalExpr(expr Logical) (any, error) {
+// VisitLogicalExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitLogicalExpr(expr parser.Logical) (any, error) {
 	left, err := i.evaluate(expr.Left)
 	if err != nil {
 		return nil, err
 	}
 
 	switch expr.Operator.Type {
-	case OR:
+	case token.OR:
 		if isTruthy(left) {
 			return left, nil
 		}
-	case AND:
+	case token.AND:
 		if !isTruthy(left) {
 			return left, nil
 		}
@@ -369,37 +384,37 @@ func (i *Interpreter) VisitLogicalExpr(expr Logical) (any, error) {
 	return i.evaluate(expr.Right)
 }
 
-// VisitGroupingExpr implements [ExprVisitor].
-func (i *Interpreter) VisitGroupingExpr(expr Grouping) (any, error) {
+// VisitGroupingExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitGroupingExpr(expr parser.Grouping) (any, error) {
 	return i.evaluate(expr.Expression)
 }
 
-// VisitUnaryExpr implements [ExprVisitor].
-func (i *Interpreter) VisitUnaryExpr(expr Unary) (any, error) {
+// VisitUnaryExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitUnaryExpr(expr parser.Unary) (any, error) {
 	right, err := i.evaluate(expr.Right)
 	if err != nil {
 		return nil, err
 	}
 
 	switch expr.Operator.Type {
-	case MINUS:
+	case token.MINUS:
 		if value, ok := right.(float64); ok {
 			return -value, nil
 		} else {
-			return nil, RuntimeError{
+			return nil, errors.RuntimeErrorAtToken(
 				expr.Operator,
 				"Operand must be a number.",
-			}
+			)
 		}
-	case BANG:
+	case token.BANG:
 		return !isTruthy(right), nil
 	}
 
 	panic("unreachable")
 }
 
-// VisitBinaryExpr implements [ExprVisitor].
-func (i *Interpreter) VisitBinaryExpr(expr Binary) (any, error) {
+// VisitBinaryExpr implements [parser.ExprVisitor].
+func (i *Interpreter) VisitBinaryExpr(expr parser.Binary) (any, error) {
 	left, err := i.evaluate(expr.Left)
 	if err != nil {
 		return nil, err
@@ -412,43 +427,43 @@ func (i *Interpreter) VisitBinaryExpr(expr Binary) (any, error) {
 
 	op := expr.Operator.Type
 	switch op {
-	case PLUS:
+	case token.PLUS:
 		if l, r, err := checkOperands[float64](left, right, expr.Operator); err == nil {
 			return l + r, err
 		}
 		if l, r, err := checkOperands[string](left, right, expr.Operator); err == nil {
 			return l + r, err
 		}
-	case MINUS, STAR, SLASH, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL:
+	case token.MINUS, token.STAR, token.SLASH, token.GREATER, token.GREATER_EQUAL, token.LESS, token.LESS_EQUAL:
 		l, r, err := checkOperands[float64](left, right, expr.Operator)
 		if err != nil {
 			return nil, err
 		}
 		switch op {
-		case MINUS:
+		case token.MINUS:
 			return l - r, nil
-		case STAR:
+		case token.STAR:
 			return l * r, nil
-		case SLASH:
+		case token.SLASH:
 			if r == 0 {
-				return nil, RuntimeError{
+				return nil, errors.RuntimeErrorAtToken(
 					expr.Operator,
 					"Division by zero.",
-				}
+				)
 			}
 			return l / r, nil
-		case GREATER:
+		case token.GREATER:
 			return l > r, nil
-		case GREATER_EQUAL:
+		case token.GREATER_EQUAL:
 			return l >= r, nil
-		case LESS:
+		case token.LESS:
 			return l < r, nil
-		case LESS_EQUAL:
+		case token.LESS_EQUAL:
 			return l <= r, nil
 		}
-	case BANG_EQUAL:
+	case token.BANG_EQUAL:
 		return left != right, nil
-	case EQUAL_EQUAL:
+	case token.EQUAL_EQUAL:
 		// https://go.dev/ref/spec#Comparison_operators
 		return left == right, nil
 	}
@@ -473,7 +488,7 @@ func isTruthy(obj Object) bool {
 // T is limited to float64 (number) or string and is used to type-assert both
 // values. On success it returns the typed operands; otherwise it returns a
 // RuntimeError associated with token.
-func checkOperands[T float64 | string](left, right Object, token Token) (T, T, error) {
+func checkOperands[T float64 | string](left, right Object, token token.Token) (T, T, error) {
 	if leftNum, ok := left.(T); ok {
 		if rightNum, ok := right.(T); ok {
 			return leftNum, rightNum, nil
@@ -491,10 +506,10 @@ func checkOperands[T float64 | string](left, right Object, token Token) (T, T, e
 		typ = "string"
 	}
 
-	return zero, zero, RuntimeError{
+	return zero, zero, errors.RuntimeErrorAtToken(
 		token,
 		fmt.Sprintf("Operands must be %ss.", typ),
-	}
+	)
 }
 
 func stringify(obj Object) string {

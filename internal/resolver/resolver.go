@@ -1,7 +1,11 @@
-package main
+package resolver
 
 import (
-	"github.com/nt54hamnghi/golox/stack"
+	"github.com/nt54hamnghi/golox/internal/errors"
+	"github.com/nt54hamnghi/golox/internal/interpreter"
+	"github.com/nt54hamnghi/golox/internal/parser"
+	"github.com/nt54hamnghi/golox/internal/scanner/token"
+	"github.com/nt54hamnghi/golox/pkg/stack"
 )
 
 type funType int
@@ -31,7 +35,7 @@ func (f funType) String() string {
 type scope = map[string]bool
 
 type Resolver struct {
-	interpreter *Interpreter
+	interpreter *interpreter.Interpreter
 	// A stack of scopes, representing nesting lexical scopes.
 	// The innermost scope is at the top of the stack, and the
 	// outermost scope is at the bottom.
@@ -40,7 +44,7 @@ type Resolver struct {
 	currentClassType classType
 }
 
-func NewResolver(interpreter *Interpreter) Resolver {
+func NewResolver(interpreter *interpreter.Interpreter) Resolver {
 	return Resolver{
 		interpreter:      interpreter,
 		scopes:           stack.NewStack[scope](),
@@ -49,15 +53,15 @@ func NewResolver(interpreter *Interpreter) Resolver {
 	}
 }
 
-func (r *Resolver) resolveExpr(expr Expr) (any, error) {
+func (r *Resolver) resolveExpr(expr parser.Expr) (any, error) {
 	return expr.Accept(r)
 }
 
-func (r *Resolver) resolveStmt(stmt Stmt) (any, error) {
+func (r *Resolver) resolveStmt(stmt parser.Stmt) (any, error) {
 	return stmt.Accept(r)
 }
 
-func (r *Resolver) Resolve(stmts []Stmt) (any, error) {
+func (r *Resolver) Resolve(stmts []parser.Stmt) (any, error) {
 	for _, s := range stmts {
 		if _, err := s.Accept(r); err != nil {
 			return nil, err
@@ -78,7 +82,7 @@ func (r *Resolver) endScope() {
 }
 
 // VisitBlockStmt implements [StmtVisitor].
-func (r *Resolver) VisitBlockStmt(stmt Block) (any, error) {
+func (r *Resolver) VisitBlockStmt(stmt parser.Block) (any, error) {
 	r.beginScope()
 	defer r.endScope()
 	if _, err := r.Resolve(stmt.Stmts); err != nil {
@@ -88,7 +92,7 @@ func (r *Resolver) VisitBlockStmt(stmt Block) (any, error) {
 }
 
 // VisitClassStmt implements [StmtVisitor].
-func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
+func (r *Resolver) VisitClassStmt(stmt parser.Class) (any, error) {
 	enclosingClassType := r.currentClassType
 	r.currentClassType = KLASS
 	defer func() { r.currentClassType = enclosingClassType }()
@@ -97,7 +101,10 @@ func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
 		r.currentClassType = SUBCLASS
 
 		if stmt.Superclass.Name.Lexeme == stmt.Name.Lexeme {
-			return nil, ErrorAtToken(stmt.Superclass.Name, "A class can't inherit from itself.")
+			return nil, errors.StaticErrorAtToken(
+				stmt.Superclass.Name,
+				"A class can't inherit from itself.",
+			)
 		}
 
 		_, err := r.resolveExpr(stmt.Superclass)
@@ -135,7 +142,7 @@ func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
 }
 
 // VisitVarStmt implements [StmtVisitor].
-func (r *Resolver) VisitVarStmt(stmt Var) (any, error) {
+func (r *Resolver) VisitVarStmt(stmt parser.Var) (any, error) {
 	if err := r.declare(stmt.Name); err != nil {
 		return nil, err
 	}
@@ -148,19 +155,19 @@ func (r *Resolver) VisitVarStmt(stmt Var) (any, error) {
 	return nil, nil
 }
 
-func (r *Resolver) declare(name Token) error {
+func (r *Resolver) declare(name token.Token) error {
 	current, exist := r.scopes.Peek()
 	if !exist {
 		return nil
 	}
 	if _, ok := current[name.Lexeme]; ok {
-		return ErrorAtToken(name, "Already a variable with this name in this scope.")
+		return errors.StaticErrorAtToken(name, "Already a variable with this name in this scope.")
 	}
 	current[name.Lexeme] = false
 	return nil
 }
 
-func (r *Resolver) define(name Token) {
+func (r *Resolver) define(name token.Token) {
 	current, exist := r.scopes.Peek()
 	if !exist {
 		return
@@ -169,12 +176,12 @@ func (r *Resolver) define(name Token) {
 }
 
 // VisitExpressionStmt implements [StmtVisitor].
-func (r *Resolver) VisitExpressionStmt(stmt Expression) (any, error) {
+func (r *Resolver) VisitExpressionStmt(stmt parser.Expression) (any, error) {
 	return r.resolveExpr(stmt.Expression)
 }
 
 // VisitFunctionStmt implements [StmtVisitor].
-func (r *Resolver) VisitFunctionStmt(stmt Function) (any, error) {
+func (r *Resolver) VisitFunctionStmt(stmt parser.Function) (any, error) {
 	if err := r.declare(stmt.Name); err != nil {
 		return nil, err
 	}
@@ -185,7 +192,7 @@ func (r *Resolver) VisitFunctionStmt(stmt Function) (any, error) {
 	return nil, nil
 }
 
-func (r *Resolver) resolveFunction(fun Function, funT funType) (any, error) {
+func (r *Resolver) resolveFunction(fun parser.Function, funT funType) (any, error) {
 	enclosingFunType := r.currentFunType
 	r.currentFunType = funT
 	defer func() { r.currentFunType = enclosingFunType }()
@@ -205,7 +212,7 @@ func (r *Resolver) resolveFunction(fun Function, funT funType) (any, error) {
 }
 
 // VisitIfStmt implements [StmtVisitor].
-func (r *Resolver) VisitIfStmt(stmt If) (any, error) {
+func (r *Resolver) VisitIfStmt(stmt parser.If) (any, error) {
 	if _, err := r.resolveExpr(stmt.Condition); err != nil {
 		return nil, err
 	}
@@ -221,18 +228,18 @@ func (r *Resolver) VisitIfStmt(stmt If) (any, error) {
 }
 
 // VisitPrintStmt implements [StmtVisitor].
-func (r *Resolver) VisitPrintStmt(stmt Print) (any, error) {
+func (r *Resolver) VisitPrintStmt(stmt parser.Print) (any, error) {
 	return r.resolveExpr(stmt.Expression)
 }
 
 // VisitReturnStmt implements [StmtVisitor].
-func (r *Resolver) VisitReturnStmt(stmt Return) (any, error) {
+func (r *Resolver) VisitReturnStmt(stmt parser.Return) (any, error) {
 	if r.currentFunType == NONE_F {
-		return nil, ErrorAtToken(stmt.Keyword, "Can't return from top-level code.")
+		return nil, errors.StaticErrorAtToken(stmt.Keyword, "Can't return from top-level code.")
 	}
 	if stmt.Value != nil {
 		if r.currentFunType == INITIALIZER {
-			return nil, ErrorAtToken(stmt.Keyword, "Can't return a value from an initializer.")
+			return nil, errors.StaticErrorAtToken(stmt.Keyword, "Can't return a value from an initializer.")
 		}
 		return r.resolveExpr(stmt.Value)
 	}
@@ -240,7 +247,7 @@ func (r *Resolver) VisitReturnStmt(stmt Return) (any, error) {
 }
 
 // VisitWhileStmt implements [StmtVisitor].
-func (r *Resolver) VisitWhileStmt(stmt While) (any, error) {
+func (r *Resolver) VisitWhileStmt(stmt parser.While) (any, error) {
 	if _, err := r.resolveExpr(stmt.Condition); err != nil {
 		return nil, err
 	}
@@ -251,7 +258,7 @@ func (r *Resolver) VisitWhileStmt(stmt While) (any, error) {
 }
 
 // VisitAssignmentExpr implements [ExprVisitor].
-func (r *Resolver) VisitAssignmentExpr(expr Assignment) (any, error) {
+func (r *Resolver) VisitAssignmentExpr(expr parser.Assignment) (any, error) {
 	if _, err := r.resolveExpr(expr.Value); err != nil {
 		return nil, err
 	}
@@ -260,7 +267,7 @@ func (r *Resolver) VisitAssignmentExpr(expr Assignment) (any, error) {
 }
 
 // VisitBinaryExpr implements [ExprVisitor].
-func (r *Resolver) VisitBinaryExpr(expr Binary) (any, error) {
+func (r *Resolver) VisitBinaryExpr(expr parser.Binary) (any, error) {
 	if _, err := r.resolveExpr(expr.Left); err != nil {
 		return nil, err
 	}
@@ -271,7 +278,7 @@ func (r *Resolver) VisitBinaryExpr(expr Binary) (any, error) {
 }
 
 // VisitCallExpr implements [ExprVisitor].
-func (r *Resolver) VisitCallExpr(expr Call) (any, error) {
+func (r *Resolver) VisitCallExpr(expr parser.Call) (any, error) {
 	if _, err := r.resolveExpr(expr.Callee); err != nil {
 		return nil, err
 	}
@@ -284,7 +291,7 @@ func (r *Resolver) VisitCallExpr(expr Call) (any, error) {
 }
 
 // VisitGetExpr implements [ExprVisitor].
-func (r *Resolver) VisitGetExpr(expr Get) (any, error) {
+func (r *Resolver) VisitGetExpr(expr parser.Get) (any, error) {
 	if _, err := r.resolveExpr(expr.Object); err != nil {
 		return nil, err
 	}
@@ -293,7 +300,7 @@ func (r *Resolver) VisitGetExpr(expr Get) (any, error) {
 }
 
 // VisitSetExpr implements [ExprVisitor].
-func (r *Resolver) VisitSetExpr(expr Set) (any, error) {
+func (r *Resolver) VisitSetExpr(expr parser.Set) (any, error) {
 	if _, err := r.resolveExpr(expr.Value); err != nil {
 		return nil, err
 	}
@@ -305,15 +312,15 @@ func (r *Resolver) VisitSetExpr(expr Set) (any, error) {
 }
 
 // VisitSuperExpr implements [ExprVisitor].
-func (r *Resolver) VisitSuperExpr(expr Super) (any, error) {
+func (r *Resolver) VisitSuperExpr(expr parser.Super) (any, error) {
 	switch r.currentClassType {
 	case NONE_C:
-		return nil, ErrorAtToken(
+		return nil, errors.StaticErrorAtToken(
 			expr.Keyword,
 			"Can't use 'super' outside of a class.",
 		)
 	case KLASS:
-		return nil, ErrorAtToken(
+		return nil, errors.StaticErrorAtToken(
 			expr.Keyword,
 			"Can't use 'super' in a class with no superclass.",
 		)
@@ -324,9 +331,9 @@ func (r *Resolver) VisitSuperExpr(expr Super) (any, error) {
 }
 
 // VisitThisExpr implements [ExprVisitor].
-func (r *Resolver) VisitThisExpr(expr This) (any, error) {
+func (r *Resolver) VisitThisExpr(expr parser.This) (any, error) {
 	if r.currentClassType == NONE_C {
-		return nil, ErrorAtToken(
+		return nil, errors.StaticErrorAtToken(
 			expr.Keyword,
 			"Can't use 'this' outside of a class.",
 		)
@@ -336,17 +343,17 @@ func (r *Resolver) VisitThisExpr(expr This) (any, error) {
 }
 
 // VisitGroupingExpr implements [ExprVisitor].
-func (r *Resolver) VisitGroupingExpr(expr Grouping) (any, error) {
+func (r *Resolver) VisitGroupingExpr(expr parser.Grouping) (any, error) {
 	return r.resolveExpr(expr.Expression)
 }
 
 // VisitLiteralExpr implements [ExprVisitor].
-func (r *Resolver) VisitLiteralExpr(expr Literal) (any, error) {
+func (r *Resolver) VisitLiteralExpr(expr parser.Literal) (any, error) {
 	return nil, nil
 }
 
 // VisitLogicalExpr implements [ExprVisitor].
-func (r *Resolver) VisitLogicalExpr(expr Logical) (any, error) {
+func (r *Resolver) VisitLogicalExpr(expr parser.Logical) (any, error) {
 	if _, err := r.resolveExpr(expr.Left); err != nil {
 		return nil, err
 	}
@@ -357,12 +364,12 @@ func (r *Resolver) VisitLogicalExpr(expr Logical) (any, error) {
 }
 
 // VisitUnaryExpr implements [ExprVisitor].
-func (r *Resolver) VisitUnaryExpr(expr Unary) (any, error) {
+func (r *Resolver) VisitUnaryExpr(expr parser.Unary) (any, error) {
 	return r.resolveExpr(expr.Right)
 }
 
 // VisitVariableExpr implements [ExprVisitor].
-func (r *Resolver) VisitVariableExpr(expr Variable) (any, error) {
+func (r *Resolver) VisitVariableExpr(expr parser.Variable) (any, error) {
 	if current, exist := r.scopes.Peek(); exist {
 		defined, ok := current[expr.Name.Lexeme]
 		if ok && !defined {
@@ -370,7 +377,7 @@ func (r *Resolver) VisitVariableExpr(expr Variable) (any, error) {
 			// However, the variable name (i.e., the lexeme value) is the same for
 			// both the variable being defined and its initializer, which we consider
 			// to be an error.
-			return nil, ErrorAtToken(
+			return nil, errors.StaticErrorAtToken(
 				expr.Name,
 				"Can't read local variable in its own initializer.",
 			)
@@ -380,10 +387,10 @@ func (r *Resolver) VisitVariableExpr(expr Variable) (any, error) {
 	return nil, nil
 }
 
-func (r *Resolver) resolveLocal(expr Expr, name Token) {
+func (r *Resolver) resolveLocal(expr parser.Expr, name token.Token) {
 	for i, s := range r.scopes.All() {
 		if _, ok := s[name.Lexeme]; ok {
-			r.interpreter.resolve(expr, i)
+			r.interpreter.Resolve(expr, i)
 			return
 		}
 	}

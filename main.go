@@ -6,9 +6,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	internalErrors "github.com/nt54hamnghi/golox/internal/errors"
+	"github.com/nt54hamnghi/golox/internal/interpreter"
+	"github.com/nt54hamnghi/golox/internal/parser"
+	"github.com/nt54hamnghi/golox/internal/resolver"
+	"github.com/nt54hamnghi/golox/internal/scanner"
 )
 
-var interpreter Interpreter = NewInterpreter()
+var in interpreter.Interpreter = interpreter.NewInterpreter()
 
 func main() {
 	args := os.Args
@@ -75,21 +81,21 @@ func runPrompt() error {
 }
 
 func run(src string) error {
-	scanner := NewScanner(src)
-	tokens, err := scanner.ScanTokens()
+	sc := scanner.NewScanner(src)
+	tokens, err := sc.ScanTokens()
 	if err != nil {
 		return err
 	}
 
-	parser := NewParser(tokens)
-	prog := parser.Parse()
+	pa := parser.NewParser(tokens)
+	prog := pa.Parse()
 
-	resolver := NewResolver(&interpreter)
-	if _, err := resolver.Resolve(prog); err != nil {
+	re := resolver.NewResolver(&in)
+	if _, err := re.Resolve(prog); err != nil {
 		return err
 	}
 
-	err = interpreter.Interpret(prog)
+	err = in.Interpret(prog)
 	if err != nil {
 		return err
 	}
@@ -104,7 +110,7 @@ func run(src string) error {
 func exit(err error) {
 	fmt.Fprintln(os.Stderr, err)
 
-	var runtimeErr RuntimeError
+	var runtimeErr internalErrors.RuntimeError
 	if errors.As(err, &runtimeErr) {
 		os.Exit(70)
 	}

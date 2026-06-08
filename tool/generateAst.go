@@ -24,47 +24,47 @@ func main() {
 		}},
 		{"Call", []field{
 			{"Callee", "Expr"},
-			{"Paren", "Token"},
+			{"Paren", "token.Token"},
 			{"Arguments", "[]Expr"},
 		}},
 		{"Get", []field{
 			{"Object", "Expr"},
-			{"Name", "Token"},
+			{"Name", "token.Token"},
 		}},
 		{"Set", []field{
 			{"Object", "Expr"},
-			{"Name", "Token"},
+			{"Name", "token.Token"},
 			{"Value", "Expr"},
 		}},
 		{"Super", []field{
-			{"Keyword", "Token"},
-			{"Method", "Token"},
+			{"Keyword", "token.Token"},
+			{"Method", "token.Token"},
 		}},
 		{"This", []field{
-			{"Keyword", "Token"},
+			{"Keyword", "token.Token"},
 		}},
 		{"Grouping", []field{
 			{"Expression", "Expr"}},
 		},
 		{"Unary", []field{
-			{"Operator", "Token"},
+			{"Operator", "token.Token"},
 			{"Right", "Expr"},
 		}},
 		{"Variable", []field{
-			{"Name", "Token"}},
+			{"Name", "token.Token"}},
 		},
 		{"Assignment", []field{
-			{"Name", "Token"},
+			{"Name", "token.Token"},
 			{"Value", "Expr"},
 		}},
 		{"Binary", []field{
 			{"Left", "Expr"},
-			{"Operator", "Token"},
+			{"Operator", "token.Token"},
 			{"Right", "Expr"},
 		}},
 		{"Logical", []field{
 			{"Left", "Expr"},
-			{"Operator", "Token"},
+			{"Operator", "token.Token"},
 			{"Right", "Expr"},
 		}},
 	})
@@ -80,17 +80,17 @@ func main() {
 			{"Expression", "Expr"},
 		}},
 		{"Var", []field{
-			{"Name", "Token"},
+			{"Name", "token.Token"},
 			{"Initializer", "Expr"},
 		}},
 		{"Class", []field{
-			{"Name", "Token"},
+			{"Name", "token.Token"},
 			{"Superclass", "*Variable"},
 			{"Methods", "[]Function"},
 		}},
 		{"Function", []field{
-			{"Name", "Token"},
-			{"Params", "[]Token"},
+			{"Name", "token.Token"},
+			{"Params", "[]token.Token"},
 			{"Body", "[]Stmt"},
 		}},
 		{"If", []field{
@@ -103,7 +103,7 @@ func main() {
 			{"Body", "Stmt"},
 		}},
 		{"Return", []field{
-			{"Keyword", "Token"},
+			{"Keyword", "token.Token"},
 			{"Value", "Expr"},
 		}},
 		{"Block", []field{{"Stmts", "[]Stmt"}}},
@@ -140,7 +140,7 @@ type field struct {
 func defineNodeIdGo(outputDir string) error {
 	b := strings.Builder{}
 
-	fmt.Fprintln(&b, "package main")
+	fmt.Fprintln(&b, "package parser")
 	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, "import (")
 	fmt.Fprintln(&b, "\t\"bytes\"")
@@ -187,11 +187,12 @@ func defineNodeIdGo(outputDir string) error {
 func defineAst(outputDir string, base string, types []typeDesc) error {
 	b := strings.Builder{}
 
-	fmt.Fprintln(&b, "package main")
+	fmt.Fprintln(&b, "package parser")
 	fmt.Fprintln(&b)
 	fmt.Fprintln(&b, "import (")
 	fmt.Fprintln(&b, "\t\"encoding/gob\"")
 	fmt.Fprintln(&b, "\t\"fmt\"")
+	fmt.Fprintln(&b, "\t\"github.com/nt54hamnghi/golox/internal/scanner/token\"")
 	fmt.Fprintln(&b, ")")
 	fmt.Fprintln(&b)
 	fmt.Fprintf(&b, "type %s interface {\n", base)

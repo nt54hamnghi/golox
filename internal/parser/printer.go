@@ -1,8 +1,10 @@
-package main
+package parser
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/nt54hamnghi/golox/internal/scanner/token"
 )
 
 type AstPrinter struct{}
@@ -95,10 +97,10 @@ func printExample() {
 	var printer AstPrinter
 	expr := NewBinary(
 		NewUnary(
-			NewToken(MINUS, "-", nil, 0),
+			token.NewToken(token.MINUS, "-", nil, 0),
 			NewLiteral(123),
 		),
-		NewToken(STAR, "*", nil, 0),
+		token.NewToken(token.STAR, "*", nil, 0),
 		NewGrouping(NewLiteral(45.67)),
 	)
 	repr := printer.String(expr)

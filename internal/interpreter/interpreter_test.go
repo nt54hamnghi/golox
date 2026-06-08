@@ -1,20 +1,22 @@
-package main
+package interpreter
 
 import (
 	"testing"
 
+	"github.com/nt54hamnghi/golox/internal/parser"
+	"github.com/nt54hamnghi/golox/internal/scanner"
 	"github.com/stretchr/testify/require"
 )
 
-func parseProgramForTest(t *testing.T, source string) []Stmt {
+func parseProgramForTest(t *testing.T, source string) []parser.Stmt {
 	t.Helper()
 	r := require.New(t)
 
-	scanner := NewScanner(source)
+	scanner := scanner.NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	r.NoError(err)
 
-	parser := NewParser(tokens)
+	parser := parser.NewParser(tokens)
 	return parser.Parse()
 }
 

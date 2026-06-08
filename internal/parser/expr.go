@@ -1,8 +1,10 @@
-package main
+package parser
 
 import (
 	"encoding/gob"
 	"fmt"
+
+	"github.com/nt54hamnghi/golox/internal/scanner/token"
 )
 
 type Expr interface {
@@ -69,12 +71,12 @@ func (self Literal) Id() NodeID {
 
 type Call struct {
 	Callee    Expr
-	Paren     Token
+	Paren     token.Token
 	Arguments []Expr
 	id        NodeID
 }
 
-func NewCall(callee Expr, paren Token, arguments []Expr) Call {
+func NewCall(callee Expr, paren token.Token, arguments []Expr) Call {
 	node := Call{
 		Callee:    callee,
 		Paren:     paren,
@@ -83,7 +85,7 @@ func NewCall(callee Expr, paren Token, arguments []Expr) Call {
 
 	tmp := struct {
 		Callee    Expr
-		Paren     Token
+		Paren     token.Token
 		Arguments []Expr
 	}{Callee: node.Callee, Paren: node.Paren, Arguments: node.Arguments}
 	node.id = NewNodeIDFrom(tmp)
@@ -97,7 +99,7 @@ func (self Call) Accept(visitor ExprVisitor) (any, error) {
 func (self Call) Id() NodeID {
 	tmp := struct {
 		Callee    Expr
-		Paren     Token
+		Paren     token.Token
 		Arguments []Expr
 	}{Callee: self.Callee, Paren: self.Paren, Arguments: self.Arguments}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
@@ -108,11 +110,11 @@ func (self Call) Id() NodeID {
 
 type Get struct {
 	Object Expr
-	Name   Token
+	Name   token.Token
 	id     NodeID
 }
 
-func NewGet(object Expr, name Token) Get {
+func NewGet(object Expr, name token.Token) Get {
 	node := Get{
 		Object: object,
 		Name:   name,
@@ -120,7 +122,7 @@ func NewGet(object Expr, name Token) Get {
 
 	tmp := struct {
 		Object Expr
-		Name   Token
+		Name   token.Token
 	}{Object: node.Object, Name: node.Name}
 	node.id = NewNodeIDFrom(tmp)
 	return node
@@ -133,7 +135,7 @@ func (self Get) Accept(visitor ExprVisitor) (any, error) {
 func (self Get) Id() NodeID {
 	tmp := struct {
 		Object Expr
-		Name   Token
+		Name   token.Token
 	}{Object: self.Object, Name: self.Name}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
@@ -143,12 +145,12 @@ func (self Get) Id() NodeID {
 
 type Set struct {
 	Object Expr
-	Name   Token
+	Name   token.Token
 	Value  Expr
 	id     NodeID
 }
 
-func NewSet(object Expr, name Token, value Expr) Set {
+func NewSet(object Expr, name token.Token, value Expr) Set {
 	node := Set{
 		Object: object,
 		Name:   name,
@@ -157,7 +159,7 @@ func NewSet(object Expr, name Token, value Expr) Set {
 
 	tmp := struct {
 		Object Expr
-		Name   Token
+		Name   token.Token
 		Value  Expr
 	}{Object: node.Object, Name: node.Name, Value: node.Value}
 	node.id = NewNodeIDFrom(tmp)
@@ -171,7 +173,7 @@ func (self Set) Accept(visitor ExprVisitor) (any, error) {
 func (self Set) Id() NodeID {
 	tmp := struct {
 		Object Expr
-		Name   Token
+		Name   token.Token
 		Value  Expr
 	}{Object: self.Object, Name: self.Name, Value: self.Value}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
@@ -181,20 +183,20 @@ func (self Set) Id() NodeID {
 }
 
 type Super struct {
-	Keyword Token
-	Method  Token
+	Keyword token.Token
+	Method  token.Token
 	id      NodeID
 }
 
-func NewSuper(keyword Token, method Token) Super {
+func NewSuper(keyword token.Token, method token.Token) Super {
 	node := Super{
 		Keyword: keyword,
 		Method:  method,
 	}
 
 	tmp := struct {
-		Keyword Token
-		Method  Token
+		Keyword token.Token
+		Method  token.Token
 	}{Keyword: node.Keyword, Method: node.Method}
 	node.id = NewNodeIDFrom(tmp)
 	return node
@@ -206,8 +208,8 @@ func (self Super) Accept(visitor ExprVisitor) (any, error) {
 
 func (self Super) Id() NodeID {
 	tmp := struct {
-		Keyword Token
-		Method  Token
+		Keyword token.Token
+		Method  token.Token
 	}{Keyword: self.Keyword, Method: self.Method}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
@@ -216,16 +218,16 @@ func (self Super) Id() NodeID {
 }
 
 type This struct {
-	Keyword Token
+	Keyword token.Token
 	id      NodeID
 }
 
-func NewThis(keyword Token) This {
+func NewThis(keyword token.Token) This {
 	node := This{
 		Keyword: keyword,
 	}
 
-	tmp := struct{ Keyword Token }{Keyword: node.Keyword}
+	tmp := struct{ Keyword token.Token }{Keyword: node.Keyword}
 	node.id = NewNodeIDFrom(tmp)
 	return node
 }
@@ -235,7 +237,7 @@ func (self This) Accept(visitor ExprVisitor) (any, error) {
 }
 
 func (self This) Id() NodeID {
-	tmp := struct{ Keyword Token }{Keyword: self.Keyword}
+	tmp := struct{ Keyword token.Token }{Keyword: self.Keyword}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
 	}
@@ -270,19 +272,19 @@ func (self Grouping) Id() NodeID {
 }
 
 type Unary struct {
-	Operator Token
+	Operator token.Token
 	Right    Expr
 	id       NodeID
 }
 
-func NewUnary(operator Token, right Expr) Unary {
+func NewUnary(operator token.Token, right Expr) Unary {
 	node := Unary{
 		Operator: operator,
 		Right:    right,
 	}
 
 	tmp := struct {
-		Operator Token
+		Operator token.Token
 		Right    Expr
 	}{Operator: node.Operator, Right: node.Right}
 	node.id = NewNodeIDFrom(tmp)
@@ -295,7 +297,7 @@ func (self Unary) Accept(visitor ExprVisitor) (any, error) {
 
 func (self Unary) Id() NodeID {
 	tmp := struct {
-		Operator Token
+		Operator token.Token
 		Right    Expr
 	}{Operator: self.Operator, Right: self.Right}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
@@ -305,16 +307,16 @@ func (self Unary) Id() NodeID {
 }
 
 type Variable struct {
-	Name Token
+	Name token.Token
 	id   NodeID
 }
 
-func NewVariable(name Token) Variable {
+func NewVariable(name token.Token) Variable {
 	node := Variable{
 		Name: name,
 	}
 
-	tmp := struct{ Name Token }{Name: node.Name}
+	tmp := struct{ Name token.Token }{Name: node.Name}
 	node.id = NewNodeIDFrom(tmp)
 	return node
 }
@@ -324,7 +326,7 @@ func (self Variable) Accept(visitor ExprVisitor) (any, error) {
 }
 
 func (self Variable) Id() NodeID {
-	tmp := struct{ Name Token }{Name: self.Name}
+	tmp := struct{ Name token.Token }{Name: self.Name}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
 	}
@@ -332,19 +334,19 @@ func (self Variable) Id() NodeID {
 }
 
 type Assignment struct {
-	Name  Token
+	Name  token.Token
 	Value Expr
 	id    NodeID
 }
 
-func NewAssignment(name Token, value Expr) Assignment {
+func NewAssignment(name token.Token, value Expr) Assignment {
 	node := Assignment{
 		Name:  name,
 		Value: value,
 	}
 
 	tmp := struct {
-		Name  Token
+		Name  token.Token
 		Value Expr
 	}{Name: node.Name, Value: node.Value}
 	node.id = NewNodeIDFrom(tmp)
@@ -357,7 +359,7 @@ func (self Assignment) Accept(visitor ExprVisitor) (any, error) {
 
 func (self Assignment) Id() NodeID {
 	tmp := struct {
-		Name  Token
+		Name  token.Token
 		Value Expr
 	}{Name: self.Name, Value: self.Value}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
@@ -368,12 +370,12 @@ func (self Assignment) Id() NodeID {
 
 type Binary struct {
 	Left     Expr
-	Operator Token
+	Operator token.Token
 	Right    Expr
 	id       NodeID
 }
 
-func NewBinary(left Expr, operator Token, right Expr) Binary {
+func NewBinary(left Expr, operator token.Token, right Expr) Binary {
 	node := Binary{
 		Left:     left,
 		Operator: operator,
@@ -382,7 +384,7 @@ func NewBinary(left Expr, operator Token, right Expr) Binary {
 
 	tmp := struct {
 		Left     Expr
-		Operator Token
+		Operator token.Token
 		Right    Expr
 	}{Left: node.Left, Operator: node.Operator, Right: node.Right}
 	node.id = NewNodeIDFrom(tmp)
@@ -396,7 +398,7 @@ func (self Binary) Accept(visitor ExprVisitor) (any, error) {
 func (self Binary) Id() NodeID {
 	tmp := struct {
 		Left     Expr
-		Operator Token
+		Operator token.Token
 		Right    Expr
 	}{Left: self.Left, Operator: self.Operator, Right: self.Right}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
@@ -407,12 +409,12 @@ func (self Binary) Id() NodeID {
 
 type Logical struct {
 	Left     Expr
-	Operator Token
+	Operator token.Token
 	Right    Expr
 	id       NodeID
 }
 
-func NewLogical(left Expr, operator Token, right Expr) Logical {
+func NewLogical(left Expr, operator token.Token, right Expr) Logical {
 	node := Logical{
 		Left:     left,
 		Operator: operator,
@@ -421,7 +423,7 @@ func NewLogical(left Expr, operator Token, right Expr) Logical {
 
 	tmp := struct {
 		Left     Expr
-		Operator Token
+		Operator token.Token
 		Right    Expr
 	}{Left: node.Left, Operator: node.Operator, Right: node.Right}
 	node.id = NewNodeIDFrom(tmp)
@@ -435,7 +437,7 @@ func (self Logical) Accept(visitor ExprVisitor) (any, error) {
 func (self Logical) Id() NodeID {
 	tmp := struct {
 		Left     Expr
-		Operator Token
+		Operator token.Token
 		Right    Expr
 	}{Left: self.Left, Operator: self.Operator, Right: self.Right}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {

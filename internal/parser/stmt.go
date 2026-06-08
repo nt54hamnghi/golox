@@ -1,8 +1,10 @@
-package main
+package parser
 
 import (
 	"encoding/gob"
 	"fmt"
+
+	"github.com/nt54hamnghi/golox/internal/scanner/token"
 )
 
 type Stmt interface {
@@ -89,19 +91,19 @@ func (self Print) Id() NodeID {
 }
 
 type Var struct {
-	Name        Token
+	Name        token.Token
 	Initializer Expr
 	id          NodeID
 }
 
-func NewVar(name Token, initializer Expr) Var {
+func NewVar(name token.Token, initializer Expr) Var {
 	node := Var{
 		Name:        name,
 		Initializer: initializer,
 	}
 
 	tmp := struct {
-		Name        Token
+		Name        token.Token
 		Initializer Expr
 	}{Name: node.Name, Initializer: node.Initializer}
 	node.id = NewNodeIDFrom(tmp)
@@ -114,7 +116,7 @@ func (self Var) Accept(visitor StmtVisitor) (any, error) {
 
 func (self Var) Id() NodeID {
 	tmp := struct {
-		Name        Token
+		Name        token.Token
 		Initializer Expr
 	}{Name: self.Name, Initializer: self.Initializer}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
@@ -124,13 +126,13 @@ func (self Var) Id() NodeID {
 }
 
 type Class struct {
-	Name       Token
+	Name       token.Token
 	Superclass *Variable
 	Methods    []Function
 	id         NodeID
 }
 
-func NewClass(name Token, superclass *Variable, methods []Function) Class {
+func NewClass(name token.Token, superclass *Variable, methods []Function) Class {
 	node := Class{
 		Name:       name,
 		Superclass: superclass,
@@ -138,7 +140,7 @@ func NewClass(name Token, superclass *Variable, methods []Function) Class {
 	}
 
 	tmp := struct {
-		Name       Token
+		Name       token.Token
 		Superclass *Variable
 		Methods    []Function
 	}{Name: node.Name, Superclass: node.Superclass, Methods: node.Methods}
@@ -152,7 +154,7 @@ func (self Class) Accept(visitor StmtVisitor) (any, error) {
 
 func (self Class) Id() NodeID {
 	tmp := struct {
-		Name       Token
+		Name       token.Token
 		Superclass *Variable
 		Methods    []Function
 	}{Name: self.Name, Superclass: self.Superclass, Methods: self.Methods}
@@ -163,13 +165,13 @@ func (self Class) Id() NodeID {
 }
 
 type Function struct {
-	Name   Token
-	Params []Token
+	Name   token.Token
+	Params []token.Token
 	Body   []Stmt
 	id     NodeID
 }
 
-func NewFunction(name Token, params []Token, body []Stmt) Function {
+func NewFunction(name token.Token, params []token.Token, body []Stmt) Function {
 	node := Function{
 		Name:   name,
 		Params: params,
@@ -177,8 +179,8 @@ func NewFunction(name Token, params []Token, body []Stmt) Function {
 	}
 
 	tmp := struct {
-		Name   Token
-		Params []Token
+		Name   token.Token
+		Params []token.Token
 		Body   []Stmt
 	}{Name: node.Name, Params: node.Params, Body: node.Body}
 	node.id = NewNodeIDFrom(tmp)
@@ -191,8 +193,8 @@ func (self Function) Accept(visitor StmtVisitor) (any, error) {
 
 func (self Function) Id() NodeID {
 	tmp := struct {
-		Name   Token
-		Params []Token
+		Name   token.Token
+		Params []token.Token
 		Body   []Stmt
 	}{Name: self.Name, Params: self.Params, Body: self.Body}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
@@ -276,19 +278,19 @@ func (self While) Id() NodeID {
 }
 
 type Return struct {
-	Keyword Token
+	Keyword token.Token
 	Value   Expr
 	id      NodeID
 }
 
-func NewReturn(keyword Token, value Expr) Return {
+func NewReturn(keyword token.Token, value Expr) Return {
 	node := Return{
 		Keyword: keyword,
 		Value:   value,
 	}
 
 	tmp := struct {
-		Keyword Token
+		Keyword token.Token
 		Value   Expr
 	}{Keyword: node.Keyword, Value: node.Value}
 	node.id = NewNodeIDFrom(tmp)
@@ -301,7 +303,7 @@ func (self Return) Accept(visitor StmtVisitor) (any, error) {
 
 func (self Return) Id() NodeID {
 	tmp := struct {
-		Keyword Token
+		Keyword token.Token
 		Value   Expr
 	}{Keyword: self.Keyword, Value: self.Value}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {

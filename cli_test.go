@@ -29,7 +29,7 @@ func (s *cliSuite) SetupSuite() {
 	s.binaryPath = &binaryPath
 }
 
-func TestUserServiceSuite(t *testing.T) {
+func TestCLISuite(t *testing.T) {
 	suite.Run(t, new(cliSuite))
 }
 

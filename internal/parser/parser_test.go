@@ -1,13 +1,14 @@
-package main
+package parser
 
 import (
 	"testing"
 
+	"github.com/nt54hamnghi/golox/internal/scanner"
 	"github.com/stretchr/testify/require"
 )
 
 func parseExpression(source string) (Expr, error) {
-	scanner := NewScanner(source)
+	scanner := scanner.NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	if err != nil {
 		return nil, err

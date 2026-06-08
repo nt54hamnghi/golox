@@ -1,35 +1,38 @@
-package main
+package scanner
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/nt54hamnghi/golox/internal/errors"
+	"github.com/nt54hamnghi/golox/internal/scanner/token"
 )
 
-var keyword map[string]TokenType = map[string]TokenType{
-	"and":    AND,
-	"class":  CLASS,
-	"else":   ELSE,
-	"false":  FALSE,
-	"for":    FOR,
-	"fun":    FUN,
-	"if":     IF,
-	"nil":    NIL,
-	"or":     OR,
-	"print":  PRINT,
-	"return": RETURN,
-	"super":  SUPER,
-	"this":   THIS,
-	"true":   TRUE,
-	"var":    VAR,
-	"while":  WHILE,
+var keyword map[string]token.TokenType = map[string]token.TokenType{
+	"and":    token.AND,
+	"class":  token.CLASS,
+	"else":   token.ELSE,
+	"false":  token.FALSE,
+	"for":    token.FOR,
+	"fun":    token.FUN,
+	"if":     token.IF,
+	"nil":    token.NIL,
+	"or":     token.OR,
+	"print":  token.PRINT,
+	"return": token.RETURN,
+	"super":  token.SUPER,
+	"this":   token.THIS,
+	"true":   token.TRUE,
+	"var":    token.VAR,
+	"while":  token.WHILE,
 }
 
 type Scanner struct {
 	// Raw source code
 	source []rune
 	// Slice of tokens to be filled as we scan the source code
-	tokens []Token
+	tokens []token.Token
 	// Offset into the source code, pointing at the first character of the lexeme being scanned
 	start int
 	// Offset into the source code, pointing at the character being considered for the current lexeme
@@ -41,14 +44,14 @@ type Scanner struct {
 func NewScanner(src string) Scanner {
 	return Scanner{
 		source:  []rune(src),
-		tokens:  []Token{},
+		tokens:  []token.Token{},
 		start:   0,
 		current: 0,
 		line:    1,
 	}
 }
 
-func (s *Scanner) ScanTokens() ([]Token, error) {
+func (s *Scanner) ScanTokens() ([]token.Token, error) {
 	sErr := ScannerError{}
 
 	for !s.isAtEnd() {
@@ -58,7 +61,7 @@ func (s *Scanner) ScanTokens() ([]Token, error) {
 		}
 	}
 
-	s.tokens = append(s.tokens, NewEOFToken(s.line))
+	s.tokens = append(s.tokens, token.NewEOFToken(s.line))
 
 	if sErr.empty() {
 		return s.tokens, nil
@@ -70,55 +73,55 @@ func (s *Scanner) ScanTokens() ([]Token, error) {
 func (s *Scanner) scanToken() error {
 	switch char := s.advanced(); char {
 	case '(':
-		s.addToken(LEFT_PAREN, nil)
+		s.addToken(token.LEFT_PAREN, nil)
 	case ')':
-		s.addToken(RIGHT_PAREN, nil)
+		s.addToken(token.RIGHT_PAREN, nil)
 	case '{':
-		s.addToken(LEFT_BRACE, nil)
+		s.addToken(token.LEFT_BRACE, nil)
 	case '}':
-		s.addToken(RIGHT_BRACE, nil)
+		s.addToken(token.RIGHT_BRACE, nil)
 	case ',':
-		s.addToken(COMMA, nil)
+		s.addToken(token.COMMA, nil)
 	case '.':
-		s.addToken(DOT, nil)
+		s.addToken(token.DOT, nil)
 	case '-':
-		s.addToken(MINUS, nil)
+		s.addToken(token.MINUS, nil)
 	case '+':
-		s.addToken(PLUS, nil)
+		s.addToken(token.PLUS, nil)
 	case ';':
-		s.addToken(SEMICOLON, nil)
+		s.addToken(token.SEMICOLON, nil)
 	case '*':
-		s.addToken(STAR, nil)
+		s.addToken(token.STAR, nil)
 	case '!':
-		var typ TokenType
+		var typ token.TokenType
 		if s.match('=') {
-			typ = BANG_EQUAL
+			typ = token.BANG_EQUAL
 		} else {
-			typ = BANG
+			typ = token.BANG
 		}
 		s.addToken(typ, nil)
 	case '=':
-		var typ TokenType
+		var typ token.TokenType
 		if s.match('=') {
-			typ = EQUAL_EQUAL
+			typ = token.EQUAL_EQUAL
 		} else {
-			typ = EQUAL
+			typ = token.EQUAL
 		}
 		s.addToken(typ, nil)
 	case '<':
-		var typ TokenType
+		var typ token.TokenType
 		if s.match('=') {
-			typ = LESS_EQUAL
+			typ = token.LESS_EQUAL
 		} else {
-			typ = LESS
+			typ = token.LESS
 		}
 		s.addToken(typ, nil)
 	case '>':
-		var typ TokenType
+		var typ token.TokenType
 		if s.match('=') {
-			typ = GREATER_EQUAL
+			typ = token.GREATER_EQUAL
 		} else {
-			typ = GREATER
+			typ = token.GREATER
 		}
 		s.addToken(typ, nil)
 	case '/':
@@ -127,7 +130,7 @@ func (s *Scanner) scanToken() error {
 				s.advanced()
 			}
 		} else {
-			s.addToken(SLASH, nil)
+			s.addToken(token.SLASH, nil)
 		}
 	case ' ', '\r', '\t':
 		// ignore whitespace
@@ -143,7 +146,7 @@ func (s *Scanner) scanToken() error {
 		} else if isAlpha(char) {
 			s.identifier()
 		} else {
-			return ErrorAtLine(s.line, "Unexpected character: "+string(char))
+			return errors.StaticErrorAtLine(s.line, "Unexpected character: "+string(char))
 		}
 	}
 
@@ -200,7 +203,7 @@ func (s *Scanner) string() error {
 	}
 
 	if s.isAtEnd() {
-		return ErrorAtLine(s.line, "Unterminated string.")
+		return errors.StaticErrorAtLine(s.line, "Unterminated string.")
 	}
 
 	// consume the closing "
@@ -208,7 +211,7 @@ func (s *Scanner) string() error {
 
 	// trim the surrounding quotes
 	value := s.source[s.start+1 : s.current-1]
-	s.addToken(STRING, string(value))
+	s.addToken(token.STRING, string(value))
 
 	return nil
 }
@@ -231,7 +234,7 @@ func (s *Scanner) number() {
 	if err != nil {
 		panic("lexeme is not a number")
 	}
-	s.addToken(NUMBER, number)
+	s.addToken(token.NUMBER, number)
 }
 
 func (s *Scanner) identifier() {
@@ -243,7 +246,7 @@ func (s *Scanner) identifier() {
 	if typ, ok := keyword[value]; ok {
 		s.addToken(typ, nil)
 	} else {
-		s.addToken(IDENTIFIER, nil)
+		s.addToken(token.IDENTIFIER, nil)
 	}
 }
 
@@ -254,9 +257,9 @@ func (s *Scanner) peekNext() rune {
 	return s.source[s.current+1]
 }
 
-func (s *Scanner) addToken(typ TokenType, literal any) {
+func (s *Scanner) addToken(typ token.TokenType, literal any) {
 	text := string(s.source[s.start:s.current])
-	token := NewToken(typ, text, literal, s.line)
+	token := token.NewToken(typ, text, literal, s.line)
 	s.tokens = append(s.tokens, token)
 }
 

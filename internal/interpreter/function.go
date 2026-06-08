@@ -1,17 +1,19 @@
-package main
+package interpreter
 
 import (
 	"errors"
 	"fmt"
+
+	"github.com/nt54hamnghi/golox/internal/parser"
 )
 
 type LoxFunction struct {
-	declaration   Function
+	declaration   parser.Function
 	closure       Environment
 	isInitializer bool
 }
 
-func NewLoxFunction(declaration Function, closure Environment, isInitializer bool) LoxFunction {
+func NewLoxFunction(declaration parser.Function, closure Environment, isInitializer bool) LoxFunction {
 	return LoxFunction{
 		declaration,
 		closure,
