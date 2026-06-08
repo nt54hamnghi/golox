@@ -15,6 +15,7 @@ func init() {
 	gob.Register(Call{})
 	gob.Register(Get{})
 	gob.Register(Set{})
+	gob.Register(Super{})
 	gob.Register(This{})
 	gob.Register(Grouping{})
 	gob.Register(Unary{})
@@ -29,6 +30,7 @@ type ExprVisitor interface {
 	VisitCallExpr(expr Call) (any, error)
 	VisitGetExpr(expr Get) (any, error)
 	VisitSetExpr(expr Set) (any, error)
+	VisitSuperExpr(expr Super) (any, error)
 	VisitThisExpr(expr This) (any, error)
 	VisitGroupingExpr(expr Grouping) (any, error)
 	VisitUnaryExpr(expr Unary) (any, error)
@@ -172,6 +174,41 @@ func (self Set) Id() NodeID {
 		Name   Token
 		Value  Expr
 	}{Object: self.Object, Name: self.Name, Value: self.Value}
+	if nodeDigest(self.id.id, tmp) != self.id.digest {
+		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
+	}
+	return self.id
+}
+
+type Super struct {
+	Keyword Token
+	Method  Token
+	id      NodeID
+}
+
+func NewSuper(keyword Token, method Token) Super {
+	node := Super{
+		Keyword: keyword,
+		Method:  method,
+	}
+
+	tmp := struct {
+		Keyword Token
+		Method  Token
+	}{Keyword: node.Keyword, Method: node.Method}
+	node.id = NewNodeIDFrom(tmp)
+	return node
+}
+
+func (self Super) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitSuperExpr(self)
+}
+
+func (self Super) Id() NodeID {
+	tmp := struct {
+		Keyword Token
+		Method  Token
+	}{Keyword: self.Keyword, Method: self.Method}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
 	}

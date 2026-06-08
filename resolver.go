@@ -18,6 +18,7 @@ type classType int
 const (
 	NONE_C classType = iota
 	KLASS
+	SUBCLASS
 )
 
 func (f funType) String() string {
@@ -79,10 +80,10 @@ func (r *Resolver) endScope() {
 // VisitBlockStmt implements [StmtVisitor].
 func (r *Resolver) VisitBlockStmt(stmt Block) (any, error) {
 	r.beginScope()
+	defer r.endScope()
 	if _, err := r.Resolve(stmt.Stmts); err != nil {
 		return nil, err
 	}
-	r.endScope()
 	return nil, nil
 }
 
@@ -92,10 +93,31 @@ func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
 	r.currentClassType = KLASS
 	defer func() { r.currentClassType = enclosingClassType }()
 
+	if stmt.Superclass != nil {
+		r.currentClassType = SUBCLASS
+
+		if stmt.Superclass.Name.Lexeme == stmt.Name.Lexeme {
+			return nil, ErrorAtToken(stmt.Superclass.Name, "A class can't inherit from itself.")
+		}
+
+		_, err := r.resolveExpr(stmt.Superclass)
+		if err != nil {
+			return nil, err
+		}
+
+		r.beginScope()
+		defer r.endScope()
+
+		s, _ := r.scopes.Peek()
+		s["super"] = true
+	}
+
 	r.declare(stmt.Name)
 	r.define(stmt.Name)
 
 	r.beginScope()
+	defer r.endScope()
+
 	s, _ := r.scopes.Peek()
 	s["this"] = true
 	for _, method := range stmt.Methods {
@@ -108,7 +130,6 @@ func (r *Resolver) VisitClassStmt(stmt Class) (any, error) {
 			return nil, err
 		}
 	}
-	r.endScope()
 
 	return nil, nil
 }
@@ -170,6 +191,7 @@ func (r *Resolver) resolveFunction(fun Function, funT funType) (any, error) {
 	defer func() { r.currentFunType = enclosingFunType }()
 
 	r.beginScope()
+	defer r.endScope()
 	for _, param := range fun.Params {
 		if err := r.declare(param); err != nil {
 			return nil, err
@@ -179,7 +201,6 @@ func (r *Resolver) resolveFunction(fun Function, funT funType) (any, error) {
 	if _, err := r.Resolve(fun.Body); err != nil {
 		return nil, err
 	}
-	r.endScope()
 	return nil, nil
 }
 
@@ -280,6 +301,25 @@ func (r *Resolver) VisitSetExpr(expr Set) (any, error) {
 		return nil, err
 	}
 
+	return nil, nil
+}
+
+// VisitSuperExpr implements [ExprVisitor].
+func (r *Resolver) VisitSuperExpr(expr Super) (any, error) {
+	switch r.currentClassType {
+	case NONE_C:
+		return nil, ErrorAtToken(
+			expr.Keyword,
+			"Can't use 'super' outside of a class.",
+		)
+	case KLASS:
+		return nil, ErrorAtToken(
+			expr.Keyword,
+			"Can't use 'super' in a class with no superclass.",
+		)
+	}
+
+	r.resolveLocal(expr, expr.Keyword)
 	return nil, nil
 }
 

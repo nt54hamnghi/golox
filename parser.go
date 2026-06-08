@@ -46,12 +46,23 @@ func (p *Parser) declaration() (Stmt, error) {
 	return p.statement()
 }
 
-// classDecl → "class" IDENTIFIER "{" function* "}";
+// classDecl → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}";
 func (p *Parser) classDeclaration() (Stmt, error) {
-	name, err := p.consume(IDENTIFIER, "Expect class name.")
+	name, err := p.consume(IDENTIFIER, "Expect superclass name.")
 	if err != nil {
 		return nil, err
 	}
+
+	var superclass *Variable
+	if p.match(LESS) {
+		name, err := p.consume(IDENTIFIER, "Expect class name.")
+		if err != nil {
+			return nil, err
+		}
+		variable := NewVariable(name)
+		superclass = &variable
+	}
+
 	if _, err = p.consume(LEFT_BRACE, "Expect '{' before class body."); err != nil {
 		return nil, err
 	}
@@ -73,7 +84,7 @@ func (p *Parser) classDeclaration() (Stmt, error) {
 		return nil, err
 	}
 
-	return NewClass(name, methods), nil
+	return NewClass(name, superclass, methods), nil
 }
 
 func (p *Parser) function(kind string) (Stmt, error) {
@@ -566,7 +577,10 @@ func (p *Parser) finishCall(callee Expr) (Expr, error) {
 	return NewCall(callee, paren, args), nil
 }
 
-// primary → NUMBER | STRING | "true" | "false" | "nil"| "(" expression ")" | IDENTIFIER ;
+// primary → "true" | "false" | "nil" | "this"
+//
+//	| NUMBER | STRING | IDENTIFIER | "(" expression ")"
+//	| "super" "." IDENTIFIER ;
 func (p *Parser) primary() (Expr, error) {
 	if p.match(FALSE) {
 		return NewLiteral(false), nil
@@ -590,6 +604,19 @@ func (p *Parser) primary() (Expr, error) {
 			return nil, err
 		}
 		return NewGrouping(expr), nil
+	}
+
+	if p.match(SUPER) {
+		keyword := p.previous()
+		_, err := p.consume(DOT, "Expect '.' after 'super'.")
+		if err != nil {
+			return nil, err
+		}
+		method, err := p.consume(IDENTIFIER, "Expect superclass method name.")
+		if err != nil {
+			return nil, err
+		}
+		return NewSuper(keyword, method), nil
 	}
 
 	if p.match(THIS) {

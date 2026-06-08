@@ -124,21 +124,24 @@ func (self Var) Id() NodeID {
 }
 
 type Class struct {
-	Name    Token
-	Methods []Function
-	id      NodeID
+	Name       Token
+	Superclass *Variable
+	Methods    []Function
+	id         NodeID
 }
 
-func NewClass(name Token, methods []Function) Class {
+func NewClass(name Token, superclass *Variable, methods []Function) Class {
 	node := Class{
-		Name:    name,
-		Methods: methods,
+		Name:       name,
+		Superclass: superclass,
+		Methods:    methods,
 	}
 
 	tmp := struct {
-		Name    Token
-		Methods []Function
-	}{Name: node.Name, Methods: node.Methods}
+		Name       Token
+		Superclass *Variable
+		Methods    []Function
+	}{Name: node.Name, Superclass: node.Superclass, Methods: node.Methods}
 	node.id = NewNodeIDFrom(tmp)
 	return node
 }
@@ -149,9 +152,10 @@ func (self Class) Accept(visitor StmtVisitor) (any, error) {
 
 func (self Class) Id() NodeID {
 	tmp := struct {
-		Name    Token
-		Methods []Function
-	}{Name: self.Name, Methods: self.Methods}
+		Name       Token
+		Superclass *Variable
+		Methods    []Function
+	}{Name: self.Name, Superclass: self.Superclass, Methods: self.Methods}
 	if nodeDigest(self.id.id, tmp) != self.id.digest {
 		panic(fmt.Sprintf("node id hash mismatch, a copied value was modified: %#v", self))
 	}
@@ -204,11 +208,11 @@ type If struct {
 	id         NodeID
 }
 
-func NewIf(condition Expr, thenBranch Stmt, elseBranch Stmt) If {
+func NewIf(condition Expr, thenbranch Stmt, elsebranch Stmt) If {
 	node := If{
 		Condition:  condition,
-		ThenBranch: thenBranch,
-		ElseBranch: elseBranch,
+		ThenBranch: thenbranch,
+		ElseBranch: elsebranch,
 	}
 
 	tmp := struct {

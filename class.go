@@ -1,18 +1,24 @@
 package main
 
 type LoxClass struct {
-	Name    string
-	methods map[string]LoxFunction
+	Name       string
+	Superclass *LoxClass
+	methods    map[string]LoxFunction
 }
 
-func NewLoxClass(name string, methods map[string]LoxFunction) *LoxClass {
-	return &LoxClass{name, methods}
+func NewLoxClass(name string, superclass *LoxClass, methods map[string]LoxFunction) *LoxClass {
+	return &LoxClass{name, superclass, methods}
 }
 
 func (cls *LoxClass) FindMethod(name string) (LoxFunction, bool) {
 	if method, ok := cls.methods[name]; ok {
 		return method, true
 	}
+
+	if cls.Superclass != nil {
+		return cls.Superclass.FindMethod(name)
+	}
+
 	return LoxFunction{}, false
 }
 
